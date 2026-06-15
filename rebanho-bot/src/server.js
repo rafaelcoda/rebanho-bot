@@ -96,7 +96,17 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
   const respostaLower = resposta.toLowerCase()
 
   if (etapa === 'menu_inicial') {
-    const opcao = MENU_TIPO_MAP[resposta]
+    // Normalizar número por extenso → dígito (peão pode falar "quatro" em vez de "4")
+    const extensoMap = {
+      'um': '1', 'uma': '1', 'one': '1',
+      'dois': '2', 'duas': '2', 'two': '2',
+      'três': '3', 'tres': '3', 'three': '3',
+      'quatro': '4', 'four': '4',
+      'cinco': '5', 'five': '5',
+      'seis': '6', 'six': '6',
+    }
+    const respostaNorm = extensoMap[respostaLower.trim()] || resposta.trim()
+    const opcao = MENU_TIPO_MAP[respostaNorm]
     if (!opcao) {
       await enviarMensagem(de, '_Por favor, responda com o número da opção (1 a 6)._')
       return
