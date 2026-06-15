@@ -431,6 +431,13 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
 
       const resposta = (corpo || '').trim().toLowerCase()
 
+
+      // ── CANCELAR: funciona em qualquer etapa ──
+      if (resposta === 'cancelar' || resposta === 'cancel') {
+        limparSessao(de)
+        return responderWhatsApp(res, '_Operação cancelada. Envie uma nova mensagem para recomeçar._')
+      }
+
       // ── FLUXO GUIADO: roteamento para etapas do novo fluxo ──
       if (dados._guiado || etapa === 'menu_inicial' || etapa === 'local_data' ||
           etapa === 'categorias' || etapa === 'peso_lote' || etapa === 'confirmacao_guiada') {
