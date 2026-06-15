@@ -107,7 +107,7 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       // nomes das opções (peão pode falar o nome em vez do número)
       'nascimento': '1', 'nascimentos': '1',
       'morte': '2', 'mortes': '2',
-      'compra': '3', 'compras': '3', 'compre': '3', 'comprei': '3',
+      'compra': '3', 'compras': '3', 'compre': '3', 'comprei': '3', 'comprar': '3',
       'venda': '4', 'vendas': '4', 'vendi': '4',
       'troca': '5', 'trocar': '5',
       'mapa': '6', 'fechamento': '6',
@@ -152,7 +152,11 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         '_Pode enviar um áudio com os números por categoria._'
       )
     } catch(e) {
-      await enviarMensagem(de, '_Não entendi sua mensagem._ ⚠️\n\n*Digite* o local e a data (não envie áudio nesta etapa).\nEx: *Retiro Aliança, dia 10 de junho de 2026*\n\nOu responda *menu* para voltar ao início.')
+      limparSessao(de)
+      responderWhatsApp(res, '_Não entendi sua mensagem._ ⚠️\n\nVoltando ao menu...')
+      const usuMenuLd = await obterOuCriarUsuario(de)
+      await enviarMenuInicial(de, usuMenuLd)
+      return
     }
     return
   }
@@ -180,7 +184,11 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         await enviarMensagem(de, gerarResumoGuiado(novosDados2))
       }
     } catch(e) {
-      await enviarMensagem(de, '_Não entendi sua mensagem._ ⚠️\n\nResponda com as quantidades por categoria.\nEx: *3 bezerros e 2 bezerras*\n\nOu responda *menu* para voltar ao início.')
+      limparSessao(de)
+      responderWhatsApp(res, '_Não entendi sua mensagem._ ⚠️\n\nVoltando ao menu...')
+      const usuMenuCat = await obterOuCriarUsuario(de)
+      await enviarMenuInicial(de, usuMenuCat)
+      return
     }
     return
   }
@@ -340,7 +348,7 @@ function gerarPergunta(etapa, dados) {
     if (dados.mes && dados.ano && !dados.dia) {
       return `_Identifiquei ${meses[dados.mes]} de ${dados.ano}, mas preciso do dia._\n\n📅 *Qual o dia deste mapa?*\nEx: *02* ou *dia 2*`
     }
-    return `_Não entendi sua mensagem._ ⚠️\n\n*Digite* a data do mapa (não envie áudio nesta etapa):\nEx: *02 de junho de 2026* ou *02/06/2026*\n\nOu responda *menu* para voltar ao início.`
+    return `_Não entendi sua mensagem._ ⚠️\n\nResponda *menu* para voltar ao início e tentar novamente.`
   }
 
   if (etapa === 'existencia') {
@@ -352,7 +360,7 @@ function gerarPergunta(etapa, dados) {
       return '_Registrei as movimentações! Mas preciso do total atual._\n\n🐄 *Quantas cabeças tem ao total em cada categoria?*\nSe não souber, responda *0*.'
     }
     const jatem = temCats.length > 0 ? '\n\nJá registrei: ' + temCats.map(c => c.item + ' (' + c.existencia_atual + ')').join(', ') : ''
-    return '_Não entendi sua mensagem._ ⚠️' + jatem + '\n\n🐄 *Digite* as cabeças por categoria (não envie áudio nesta etapa).\n\nOu responda *menu* para voltar ao início.'
+    return '_Não entendi sua mensagem._ ⚠️' + jatem + '\n\nResponda *menu* para voltar ao início e tentar novamente.'
   }
 
   if (etapa === 'movimentacoes') {
