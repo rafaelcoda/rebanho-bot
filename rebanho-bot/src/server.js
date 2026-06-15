@@ -484,12 +484,13 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
         responderWhatsApp(res, '_Ouvindo seu áudio..._')
         transcreverAudio(mediaUrl, process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
           .then(txt => {
-            console.log('Áudio em sessão (' + etapa + '):', txt.substring(0, 100))
+            console.log('Áudio em sessão (' + etapa + '):', (txt||'').substring(0, 100))
+            const txtStr = typeof txt === 'string' ? txt : (txt?.text || txt?.transcription || JSON.stringify(txt) || '')
             if (dados._guiado || etapa === 'menu_inicial' || etapa === 'local_data' ||
                 etapa === 'categorias' || etapa === 'peso_lote' || etapa === 'confirmacao_guiada') {
-              return processarFluxoGuiado(de, txt, dados, etapa)
+              return processarFluxoGuiado(de, txtStr, dados, etapa)
             }
-            return tratarRespostaSessao(de, txt, dados, etapa)
+            return tratarRespostaSessao(de, txtStr, dados, etapa)
           })
           .catch(err => enviarMensagem(de, 'Erro: ' + err.message))
         return
@@ -517,7 +518,7 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
         if (temAudio) {
           responderWhatsApp(res, '_Ouvindo seu áudio..._')
           transcreverAudio(mediaUrl, process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
-            .then(function(txt) { return processarFluxoGuiado(de, txt, dados, etapa) })
+            .then(function(txt) { return processarFluxoGuiado(de, typeof txt === 'string' ? txt : (txt?.text || ''), dados, etapa) })
             .catch(function(err) { enviarMensagem(de, 'Erro: ' + err.message) })
           return
         }
