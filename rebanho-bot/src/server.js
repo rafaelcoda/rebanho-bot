@@ -152,10 +152,17 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         '_Pode enviar um áudio com os números por categoria._'
       )
     } catch(e) {
-      limparSessao(de)
-      responderWhatsApp(res, '_Não entendi sua mensagem._ ⚠️\n\nVoltando ao menu...')
-      const usuMenuLd = await obterOuCriarUsuario(de)
-      await enviarMenuInicial(de, usuMenuLd)
+      const ia = await tentarEntenderComIA(de, resposta, dados, 'Preciso saber: local/fazenda e data do registro')
+      if (ia.entendeu && ia.dados_extraidos) {
+        const novosDados = Object.assign({}, dados, ia.dados_extraidos)
+        const cats = CATEGORIAS_POR_TIPO[dados.tipo_guiado] || []
+        const listaCats = cats.map(function(c) { return '• ' + c }).join('\n')
+        setSessao(de, novosDados, 'categorias')
+        await enviarMensagem(de, '✅ Registrado!\n\nAgora informe as *quantidades por categoria* para *' + dados.label_tipo + '*:\n\n' + listaCats + '\n\n_Pode enviar um áudio com os números por categoria._')
+      } else {
+        const msgIA = ia.resposta || '_Não entendi. Tente falar o local e a data, ex: "Retiro Aliança, dia 10 de junho"._'
+        await enviarMensagem(de, msgIA)
+      }
       return
     }
     return
@@ -184,10 +191,17 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         await enviarMensagem(de, gerarResumoGuiado(novosDados2))
       }
     } catch(e) {
-      limparSessao(de)
-      responderWhatsApp(res, '_Não entendi sua mensagem._ ⚠️\n\nVoltando ao menu...')
-      const usuMenuCat = await obterOuCriarUsuario(de)
-      await enviarMenuInicial(de, usuMenuCat)
+      const cats = CATEGORIAS_POR_TIPO[dados.tipo_guiado] || []
+      const ia = await tentarEntenderComIA(de, resposta, dados, 'Preciso saber: quantidades por categoria para ' + (dados.label_tipo||'') + '. Categorias: ' + cats.join(', '))
+      if (ia.entendeu && ia.dados_extraidos) {
+        const movs = ia.dados_extraidos.movimentacoes || ia.dados_extraidos.categorias || []
+        const novosDados2 = Object.assign({}, dados, { _movimentacoesGuiadas: movs })
+        setSessao(de, novosDados2, 'confirmacao_guiada')
+        await enviarMensagem(de, gerarResumoGuiado(novosDados2))
+      } else {
+        const msgIA = ia.resposta || '_Não entendi. Fale as quantidades por categoria, ex: "3 bezerros e 2 bezerras"._'
+        await enviarMensagem(de, msgIA)
+      }
       return
     }
     return
@@ -407,6 +421,39 @@ ${linhasCat || '  (nenhuma)'}
 Está correto? Responda *sim* para salvar ou *não* para corrigir.`
 }
 
+
+// ─── Fallback IA: tenta entender mensagem quando extração falha ───────────────
+async function tentarEntenderComIA(de, texto, dados, contexto) {
+  try {
+    const axios = require('axios')
+    const prompt = `Você é um assistente de registro de rebanho bovino. 
+O peão enviou a mensagem: "${texto}"
+Contexto atual: ${contexto}
+Dados já coletados: fazenda="${dados.fazenda||''}", tipo="${dados.label_tipo||dados.tipo_guiado||''}"
+
+Responda em JSON com:
+- entendeu: true/false
+- resposta: mensagem curta e amigável para o peão (em português informal, max 2 linhas)
+- dados_extraidos: objeto com os dados que conseguiu extrair (ou null)
+
+Responda APENAS com JSON válido, sem markdown.`
+
+    const resp = await axios.post('https://api.openai.com/v1/chat/completions', {
+      model: 'gpt-4o-mini',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: prompt }]
+    }, {
+      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      timeout: 10000
+    })
+    const raw = resp.data.choices[0].message.content.trim().replace(/```json|```/g, '')
+    return JSON.parse(raw)
+  } catch(e) {
+    console.log('[WARN] tentarEntenderComIA:', e.message)
+    return { entendeu: false, resposta: null, dados_extraidos: null }
+  }
+}
+
 // ─── Webhook ──────────────────────────────────────────────────────────────────
 function validarTwilio(req, res, next) {
   // if (!twilio.validateRequest(...)) return res.status(403).send('Forbidden')
@@ -438,6 +485,10 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
         transcreverAudio(mediaUrl, process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
           .then(txt => {
             console.log('Áudio em sessão (' + etapa + '):', txt.substring(0, 100))
+            if (dados._guiado || etapa === 'menu_inicial' || etapa === 'local_data' ||
+                etapa === 'categorias' || etapa === 'peso_lote' || etapa === 'confirmacao_guiada') {
+              return processarFluxoGuiado(de, txt, dados, etapa)
+            }
             return tratarRespostaSessao(de, txt, dados, etapa)
           })
           .catch(err => enviarMensagem(de, 'Erro: ' + err.message))
