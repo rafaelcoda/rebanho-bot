@@ -108,7 +108,10 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
     const respostaNorm = extensoMap[respostaLower.trim()] || resposta.trim()
     const opcao = MENU_TIPO_MAP[respostaNorm]
     if (!opcao) {
-      await enviarMensagem(de, '_Por favor, responda com o número da opção (1 a 6)._')
+      await enviarMensagem(de,
+        '_Não entendi. Responda com o número da opção:_\n\n' +
+        '1️⃣  Nascimentos\n2️⃣  Mortes\n3️⃣  Compras\n4️⃣  Vendas\n5️⃣  Troca de categoria\n6️⃣  Fechamento mensal'
+      )
       return
     }
     const novosDados = { _guiado: true, tipo_guiado: opcao.tipo, tipo_interno: opcao.interno, label_tipo: opcao.label }
