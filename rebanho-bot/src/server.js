@@ -1,5 +1,5 @@
 require('dotenv').config()
-// v1781550570
+// v1781554697
 
 const express = require('express')
 const twilio = require('twilio')
@@ -8,6 +8,9 @@ const { createClient } = require('@supabase/supabase-js')
 const { transcreverAudio } = require('./transcricao')
 const { extrairDadosRebanho, extrairComplemento, extrairMovimentacao, extrairMovimentacaoMultipla, detectarTipoRegistro, agentRoteador, agentConsulta, salvarExemploConfirmado, gerarResumoWhatsApp, extrairPeso } = require('./extracao')
 
+
+// Helper: garantir string na transcrição
+function toStr(v) { return typeof v === 'string' ? v : (v?.text || v?.transcription || (v ? JSON.stringify(v) : '') || '') }
 // Tipos de movimentação de curral que exigem peso obrigatório
 const TIPOS_EXIGEM_PESO = ['entrada_compra', 'saida_venda', 'mudanca_categoria']
 
@@ -484,7 +487,7 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
         responderWhatsApp(res, '_Ouvindo seu áudio..._')
         transcreverAudio(mediaUrl, process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
           .then(txt => {
-            console.log('Áudio em sessão (' + etapa + '):', (txt||'').substring(0, 100))
+            const _txtLog = typeof txt === 'string' ? txt : (txt?.text || txt?.transcription || JSON.stringify(txt) || ''); console.log('Áudio em sessão (' + etapa + '):', _txtLog.substring(0, 100))
             const txtStr = typeof txt === 'string' ? txt : (txt?.text || txt?.transcription || JSON.stringify(txt) || '')
             if (dados._guiado || etapa === 'menu_inicial' || etapa === 'local_data' ||
                 etapa === 'categorias' || etapa === 'peso_lote' || etapa === 'confirmacao_guiada') {
@@ -820,8 +823,9 @@ async function tratarRespostaSessao(de, textoResposta, dados, etapa) {
 
 // ─── Processamento principal ──────────────────────────────────────────────────
 async function processarAudio(de, mediaUrl, logId) {
-  const texto = await transcreverAudio(mediaUrl,
+  const textoRaw = await transcreverAudio(mediaUrl,
     process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+  const texto = toStr(textoRaw)
   console.log('Transcrição:', texto.substring(0, 150))
   await processarTexto(de, texto)
 }
