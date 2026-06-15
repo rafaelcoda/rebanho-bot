@@ -112,7 +112,7 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       'troca': '5', 'trocar': '5',
       'mapa': '6', 'fechamento': '6',
     }
-    const respostaNorm = extensoMap[respostaLower.trim()] || resposta.trim()
+    const respostaNorm = extensoMap[respostaLower.trim().replace(/[.,!?]+$/, '')] || resposta.trim().replace(/[.,!?]+$/, '')
     const opcao = MENU_TIPO_MAP[respostaNorm]
     if (!opcao) {
       await enviarMensagem(de,
