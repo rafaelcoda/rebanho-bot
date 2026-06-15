@@ -104,6 +104,13 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       'quatro': '4', 'four': '4',
       'cinco': '5', 'five': '5',
       'seis': '6', 'six': '6',
+      // nomes das opções (peão pode falar o nome em vez do número)
+      'nascimento': '1', 'nascimentos': '1',
+      'morte': '2', 'mortes': '2',
+      'compra': '3', 'compras': '3', 'compre': '3', 'comprei': '3',
+      'venda': '4', 'vendas': '4', 'vendi': '4',
+      'troca': '5', 'trocar': '5',
+      'mapa': '6', 'fechamento': '6',
     }
     const respostaNorm = extensoMap[respostaLower.trim()] || resposta.trim()
     const opcao = MENU_TIPO_MAP[respostaNorm]
@@ -145,7 +152,7 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         '_Pode enviar um áudio com os números por categoria._'
       )
     } catch(e) {
-      await enviarMensagem(de, '_Não consegui identificar o local e a data. Pode repetir? Ex: Retiro Aliança, dia 10 de junho de 2026_')
+      await enviarMensagem(de, '_Não entendi sua mensagem._ ⚠️\n\n*Digite* o local e a data (não envie áudio nesta etapa).\nEx: *Retiro Aliança, dia 10 de junho de 2026*\n\nOu responda *menu* para voltar ao início.')
     }
     return
   }
@@ -173,7 +180,7 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         await enviarMensagem(de, gerarResumoGuiado(novosDados2))
       }
     } catch(e) {
-      await enviarMensagem(de, '_Erro ao processar categorias. Pode repetir com as quantidades?_')
+      await enviarMensagem(de, '_Não entendi sua mensagem._ ⚠️\n\nResponda com as quantidades por categoria.\nEx: *3 bezerros e 2 bezerras*\n\nOu responda *menu* para voltar ao início.')
     }
     return
   }
@@ -333,7 +340,7 @@ function gerarPergunta(etapa, dados) {
     if (dados.mes && dados.ano && !dados.dia) {
       return `_Identifiquei ${meses[dados.mes]} de ${dados.ano}, mas preciso do dia._\n\n📅 *Qual o dia deste mapa?*\nEx: *02* ou *dia 2*`
     }
-    return `_Não identifiquei a data completa._\n\n📅 *Para qual data é este mapa? (dia, mês e ano)*\nEx: *02 de junho de 2026* ou *02/06/2026*`
+    return `_Não entendi sua mensagem._ ⚠️\n\n*Digite* a data do mapa (não envie áudio nesta etapa):\nEx: *02 de junho de 2026* ou *02/06/2026*\n\nOu responda *menu* para voltar ao início.`
   }
 
   if (etapa === 'existencia') {
@@ -345,7 +352,7 @@ function gerarPergunta(etapa, dados) {
       return '_Registrei as movimentações! Mas preciso do total atual._\n\n🐄 *Quantas cabeças tem ao total em cada categoria?*\nSe não souber, responda *0*.'
     }
     const jatem = temCats.length > 0 ? '\n\nJá registrei: ' + temCats.map(c => c.item + ' (' + c.existencia_atual + ')').join(', ') : ''
-    return '_Não identifiquei as existências._' + jatem + '\n\n🐄 *Quantas cabeças tem ao total por categoria?*'
+    return '_Não entendi sua mensagem._ ⚠️' + jatem + '\n\n🐄 *Digite* as cabeças por categoria (não envie áudio nesta etapa).\n\nOu responda *menu* para voltar ao início.'
   }
 
   if (etapa === 'movimentacoes') {
@@ -432,10 +439,17 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
       const resposta = (corpo || '').trim().toLowerCase()
 
 
-      // ── CANCELAR: funciona em qualquer etapa ──
+      // ── CANCELAR / MENU: funciona em qualquer etapa ──
       if (resposta === 'cancelar' || resposta === 'cancel') {
         limparSessao(de)
         return responderWhatsApp(res, '_Operação cancelada. Envie uma nova mensagem para recomeçar._')
+      }
+      if (resposta === 'menu') {
+        limparSessao(de)
+        responderWhatsApp(res, '_Abrindo menu..._')
+        const usuarioMenu = await obterOuCriarUsuario(de)
+        enviarMenuInicial(de, usuarioMenu).catch(err => enviarMensagem(de, 'Erro: ' + err.message))
+        return
       }
 
       // ── FLUXO GUIADO: roteamento para etapas do novo fluxo ──
