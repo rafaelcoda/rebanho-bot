@@ -1,5 +1,5 @@
 require('dotenv').config()
-// v1781640818
+// v1781643938
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1499,6 +1499,10 @@ app.get('/api/animais', async (req, res) => {
 })
 
 const PORT = process.env.PORT || 3000
+// ─── Iniciar agente de análise ───────────────────────────────
+const agenteAnalise = require('./agente_analise')
+agenteAnalise.iniciarAgendamento()
+
 app.listen(PORT, () => {
   console.log(`Servidor na porta ${PORT}`)
   supabase.from('configuracoes').select('chave, valor').then(({ data }) => {
