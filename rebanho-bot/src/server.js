@@ -1,5 +1,6 @@
 require('dotenv').config()
-// v1781646551
+const dbFazendas = require('./db_fazendas')
+// v1781646863
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1574,7 +1575,6 @@ app.get('/api/animais', async (req, res) => {
 const PORT = process.env.PORT || 3000
 // ─── Iniciar agente de análise ───────────────────────────────
 const agenteAnalise = require('./agente_analise')
-const dbFazendas = require('./db_fazendas')
 agenteAnalise.iniciarAgendamento()
 
 app.listen(PORT, () => {
