@@ -1,5 +1,5 @@
 require('dotenv').config()
-// v1781635934
+// v1781640818
 
 const express = require('express')
 const twilio = require('twilio')
@@ -610,6 +610,24 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
       responderWhatsApp(res, '_Processando..._')
       processarTexto(de, corpo, logIdTxt).catch(err =>
         enviarMensagem(de, `Erro: ${err.message}`))
+      return
+    }
+
+    // ── Consulta RAG: perguntas sobre o rebanho ──
+    const ac = getAgenteConsulta()
+    if (ac.ehPergunta(corpo)) {
+      const usuarioRAG = await obterOuCriarUsuario(de)
+      const fazendaRAG = usuarioRAG?.fazenda || 'Grupo Ricci'
+      responderWhatsApp(res, '_Consultando dados do rebanho..._')
+      ac.responderPergunta(corpo, fazendaRAG, usuarioRAG?.nome)
+        .then(async resposta => {
+          if (resposta) {
+            await enviarMensagem(de, resposta)
+          } else {
+            await enviarMensagem(de, '_Não encontrei informações suficientes. Tente reformular a pergunta._')
+          }
+        })
+        .catch(err => enviarMensagem(de, 'Erro: ' + err.message))
       return
     }
 
@@ -1249,6 +1267,7 @@ async function finalizarSalvamento(de, dados) {
   const resumo = gerarResumoWhatsApp(dados)
   await enviarMensagem(de, resumo)
   console.log(`Salvo: ${salvo.mes}/${salvo.ano} | ${salvo.totalCategorias} cats`)
+  getAgenteConsulta().gerarSnapshot(dados.fazenda || 'Grupo Ricci').catch(() => {})
   incrementarEnvios(de).catch(() => {})
   // Onboarding progressivo: perguntar um campo pendente após cada envio
   setTimeout(() => { perguntarProximoCadastro(de).catch(() => {}) }, 2000)
@@ -1436,6 +1455,11 @@ app.get('/api/exportar-finetuning/stats', async (req, res) => {
 let _agenteLogs = null
 function getAgenteLogs() {
   if (!_agenteLogs) _agenteLogs = require('./agente_logs')
+let _agenteConsulta = null
+function getAgenteConsulta() {
+  if (!_agenteConsulta) _agenteConsulta = require('./agente_consulta')
+  return _agenteConsulta
+}
   return _agenteLogs
 }
 
