@@ -162,3 +162,5 @@ O fazendeiro precisa mencionar o período no áudio, ex: "março de 2026".
 **Timeout na transcrição:**
 Áudios muito longos (>5min) podem demorar. O Railway não tem limite de
 timeout para servidores contínuos.
+
+<!-- deploy 1781632823 -->
