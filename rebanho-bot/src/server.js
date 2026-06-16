@@ -1,5 +1,5 @@
 require('dotenv').config()
-// v1781554697
+// v1781632612
 
 const express = require('express')
 const twilio = require('twilio')
@@ -115,7 +115,18 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       'troca': '5', 'trocar': '5',
       'mapa': '6', 'fechamento': '6',
     }
-    const respostaNorm = extensoMap[respostaLower.trim().replace(/[.,!?]+$/, '')] || resposta.trim().replace(/[.,!?]+$/, '')
+    // Tentar match exato primeiro, depois buscar número/extenso em qualquer parte da frase
+    const respostaClean = respostaLower.trim().replace(/[.,!?]+$/, '').trim()
+    let respostaNorm = extensoMap[respostaClean] || respostaClean
+    // Se não encontrou, buscar palavra-chave numérica em qualquer parte da transcrição
+    if (!extensoMap[respostaClean] && !respostaClean.match(/^[1-6]$/)) {
+      for (const [key, val] of Object.entries(extensoMap)) {
+        if (respostaLower.includes(key)) { respostaNorm = val; break }
+      }
+      // Buscar dígito solto na frase
+      const digitMatch = respostaClean.match(/\b([1-6])\b/)
+      if (digitMatch) respostaNorm = digitMatch[1]
+    }
     const opcao = MENU_TIPO_MAP[respostaNorm]
     if (!opcao) {
       await enviarMensagem(de,
