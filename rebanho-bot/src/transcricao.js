@@ -7,12 +7,21 @@ const FormData = require('form-data')
 async function transcreverAudio(mediaUrl, accountSid, authToken, tentativa = 1) {
   const tmpPath = path.join(os.tmpdir(), `audio_${Date.now()}.ogg`)
 
-  // 1. Baixar audio do Twilio
-  const response = await axios.get(mediaUrl, {
-    responseType: 'arraybuffer',
-    auth: { username: accountSid, password: authToken },
-    timeout: 30000,
-  })
+  // 1. Baixar audio do Twilio (com retry)
+  let response
+  for (let i = 1; i <= 3; i++) {
+    try {
+      response = await axios.get(mediaUrl, {
+        responseType: 'arraybuffer',
+        auth: { username: accountSid, password: authToken },
+        timeout: 15000,
+      })
+      break
+    } catch (err) {
+      if (i === 3) throw err
+      await new Promise(r => setTimeout(r, 1000 * i))
+    }
+  }
 
   fs.writeFileSync(tmpPath, response.data)
   console.log(`Audio salvo: ${tmpPath} (${response.data.byteLength} bytes)`)
