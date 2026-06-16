@@ -1,6 +1,6 @@
 require('dotenv').config()
 const dbFazendas = require('./db_fazendas')
-// v1781646863
+// v1781647316
 
 const express = require('express')
 const twilio = require('twilio')
@@ -751,7 +751,8 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
     responderWhatsApp(res,
       `*Olá${usuario.nome ? ', ' + usuario.nome.split(' ')[0] : ''}! Sou o assistente de rebanho do Grupo Ricci.* 🐄\n\nEnvie um *áudio* com os dados do mapa de rebanho.\n\nComandos:\n- *resumo* — últimos 3 meses\n- *lotes* — resumo por lote\n- *cancelar* — cancela operação em andamento`)
   } catch (err) {
-    console.error('Erro webhook:', err)
+    console.error('Erro webhook:', err.message)
+    console.error('Stack:', err.stack?.split('\n').slice(0,3).join(' | '))
     responderWhatsApp(res, 'Erro inesperado. Tente novamente.')
   }
 })
