@@ -1,5 +1,5 @@
 require('dotenv').config()
-// v1781643938
+// v1781646161
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1217,8 +1217,18 @@ async function salvarEResponderMovimentacao(de, mov) {
     if (mov.dia && mov.mes && mov.ano) {
       dataIso = mov.ano + '-' + String(mov.mes).padStart(2,'0') + '-' + String(mov.dia).padStart(2,'0')
     }
+    // Resolver IDs das novas tabelas
+    const ctx = await dbFazendas.resolverContexto(
+      dados.fazenda,
+      dados.loteNome || null,
+      dados.tipoAnimal || null
+    ).catch(() => ({}))
+
     await supabase.from('movimentacoes_lote').insert({
-      fazenda:        mov.fazenda || 'Grupo Ricci',
+      fazenda:          mov.fazenda || dados.fazenda || 'Grupo Ricci',
+      fazenda_id:       ctx.fazenda_id || null,
+      lote_id:          ctx.lote_id || null,
+      tipo_animal_id:   ctx.tipo_id || null,
       tipo,
       data_mov:       dataIso || new Date().toISOString().substring(0, 10),
       quantidade:     mov.quantidade || 1,
@@ -1501,6 +1511,7 @@ app.get('/api/animais', async (req, res) => {
 const PORT = process.env.PORT || 3000
 // ─── Iniciar agente de análise ───────────────────────────────
 const agenteAnalise = require('./agente_analise')
+const dbFazendas = require('./db_fazendas')
 agenteAnalise.iniciarAgendamento()
 
 app.listen(PORT, () => {
