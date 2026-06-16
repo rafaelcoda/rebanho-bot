@@ -1,5 +1,5 @@
 require('dotenv').config()
-// v1781632612
+// v1781635934
 
 const express = require('express')
 const twilio = require('twilio')
@@ -27,11 +27,10 @@ const MENU_TIPO_MAP = {
 // Categorias relevantes por tipo de movimentação
 const CATEGORIAS_POR_TIPO = {
   nascimento: ['1.1 Bezerros 0-8m', '2.1 Bezerras 0-2m'],
-  morte:      ['1.1 Bezerros 0-8m','1.3 Garrotes 13-24m','1.5 Bois 25-36m','1.7 Touros PO',
-               '2.1 Bezerras 0-2m','2.4 Novilhas 13-24m','2.7 Vacas paridas','2.6 Vacas solteiras'],
-  compra:     ['1.3 Garrotes 13-24m','1.5 Bois 25-36m','2.4 Novilhas 13-24m','2.7 Vacas paridas'],
-  venda:      ['1.3 Garrotes 13-24m','1.5 Bois 25-36m','2.6 Vacas solteiras','1.7 Touros PO'],
-  troca:      ['1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m'],
+  morte:      ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'],
+  compra:     ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'],
+  venda:      ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'],
+  troca:      ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'],
   mapa:       ['1.1','1.2','1.3','1.4','1.5','1.6','1.7','2.1','2.2','2.3','2.4','2.5','2.6','2.7','2.8'],
 }
 let _rag = null
