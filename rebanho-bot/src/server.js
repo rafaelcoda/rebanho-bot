@@ -1,5 +1,5 @@
 require('dotenv').config()
-// v1781646161
+// v1781646551
 
 const express = require('express')
 const twilio = require('twilio')
@@ -92,6 +92,54 @@ async function enviarMenuInicial(de, usuario) {
   )
 }
 
+// ─── Perguntar lote e tipo de animal ─────────────────────────────────────────
+async function perguntarLoteTipo(de, dados) {
+  // Buscar lotes disponíveis da fazenda
+  let msgLotes = ''
+  try {
+    const fazendaObj = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
+    if (fazendaObj) {
+      const lotes = await dbFazendas.listarLotes(fazendaObj.id)
+      if (lotes.length > 0) {
+        msgLotes = '\n\nLotes disponíveis:\n' + lotes.map(l => '• ' + l.nome).join('\n')
+      }
+    }
+  } catch(e) {}
+
+  await enviarMensagem(de,
+    'Em qual *lote* e qual o *tipo de animal*?' + msgLotes +
+    '\n\nTipos: Nelore, Angus, Cruzado, Girolando, Outros' +
+    '\n\n_Ex: "Lote Engorda, Nelore" — ou responda "pular" para continuar._'
+  )
+}
+
+// ─── Extrair lote e tipo de animal de texto livre ────────────────────────────
+async function extrairLoteTipo(texto) {
+  const t = texto.toLowerCase()
+
+  // Verificar se quer pular
+  if (t.includes('pular') || t.includes('skip') || t.includes('não sei') || t.includes('nao sei')) {
+    return { lote: null, tipo_animal: null }
+  }
+
+  // Tipos de animal conhecidos
+  const tipos = ['nelore', 'angus', 'cruzado', 'girolando', 'outros']
+  let tipo_animal = null
+  for (const tipo of tipos) {
+    if (t.includes(tipo)) { tipo_animal = tipo.charAt(0).toUpperCase() + tipo.slice(1); break }
+  }
+
+  // Extrair lote — buscar padrão "lote X" ou "retiro X"
+  let lote = null
+  const matchLote = t.match(/lote\s+(\w+(?:\s+\w+)?)/i) || t.match(/retiro\s+(\w+(?:\s+\w+)?)/i)
+  if (matchLote) {
+    lote = matchLote[0].trim()
+    lote = lote.charAt(0).toUpperCase() + lote.slice(1)
+  }
+
+  return { lote, tipo_animal }
+}
+
 // ─── Fluxo guiado: processar cada etapa ──────────────────────────────────────
 async function processarFluxoGuiado(de, texto, dados, etapa) {
   const resposta = (texto || '').trim()
@@ -156,27 +204,42 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         ano: extraido.ano || null,
         _transcricaoLocalData: resposta,
       })
-      const cats = CATEGORIAS_POR_TIPO[dados.tipo_guiado] || []
-      const listaCats = cats.map(function(c) { return '• ' + c }).join('\n')
-      setSessao(de, novosDados, 'categorias')
-      await enviarMensagem(de,
-        '✅ Registrado!\n\n' +
-        'Agora informe as *quantidades por categoria* para *' + dados.label_tipo + '*:\n\n' + listaCats + '\n\n' +
-        '_Pode enviar um áudio com os números por categoria._'
-      )
+      setSessao(de, novosDados, 'lote_tipo')
+      await perguntarLoteTipo(de, novosDados)
     } catch(e) {
       const ia = await tentarEntenderComIA(de, resposta, dados, 'Preciso saber: local/fazenda e data do registro')
       if (ia.entendeu && ia.dados_extraidos) {
         const novosDados = Object.assign({}, dados, ia.dados_extraidos)
-        const cats = CATEGORIAS_POR_TIPO[dados.tipo_guiado] || []
-        const listaCats = cats.map(function(c) { return '• ' + c }).join('\n')
-        setSessao(de, novosDados, 'categorias')
-        await enviarMensagem(de, '✅ Registrado!\n\nAgora informe as *quantidades por categoria* para *' + dados.label_tipo + '*:\n\n' + listaCats + '\n\n_Pode enviar um áudio com os números por categoria._')
+        setSessao(de, novosDados, 'lote_tipo')
+        await perguntarLoteTipo(de, novosDados)
       } else {
         const msgIA = ia.resposta || '_Não entendi. Tente falar o local e a data, ex: "Retiro Aliança, dia 10 de junho"._'
         await enviarMensagem(de, msgIA)
       }
       return
+    }
+    return
+  }
+
+  // ── Etapa: lote e tipo de animal ──────────────────────────
+  if (etapa === 'lote_tipo') {
+    try {
+      // Extrair lote e tipo de animal do texto
+      const extraido = await extrairLoteTipo(resposta)
+      const novosDados = Object.assign({}, dados, {
+        lote_nome: extraido.lote || dados.lote_nome || null,
+        tipo_animal: extraido.tipo_animal || dados.tipo_animal || null,
+      })
+      const cats = CATEGORIAS_POR_TIPO[dados.tipo_guiado] || []
+      const listaCats = cats.map(function(c) { return '• ' + c }).join('\n')
+      setSessao(de, novosDados, 'categorias')
+      await enviarMensagem(de,
+        '✅ Ok!\n\n' +
+        'Agora informe as *quantidades por categoria* para *' + dados.label_tipo + '*:\n\n' +
+        listaCats + '\n\n_Pode enviar um áudio com os números por categoria._'
+      )
+    } catch(e) {
+      await enviarMensagem(de, '_Não entendi. Informe o lote e tipo de animal, ex: "Lote Engorda, Nelore"._')
     }
     return
   }
