@@ -1,6 +1,6 @@
 require('dotenv').config()
 const dbFazendas = require('./db_fazendas')
-// v1781647316
+// v1781648229
 
 const express = require('express')
 const twilio = require('twilio')
@@ -563,7 +563,7 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
           .then(txt => {
             const _txtLog = typeof txt === 'string' ? txt : (txt?.text || txt?.transcription || JSON.stringify(txt) || ''); console.log('Áudio em sessão (' + etapa + '):', _txtLog.substring(0, 100))
             const txtStr = typeof txt === 'string' ? txt : (txt?.text || txt?.transcription || JSON.stringify(txt) || '')
-            if (dados._guiado || etapa === 'menu_inicial' || etapa === 'local_data' ||
+            if (dados._guiado || etapa === 'menu_inicial' || etapa === 'local_data' || etapa === 'lote_tipo' ||
                 etapa === 'categorias' || etapa === 'peso_lote' || etapa === 'confirmacao_guiada') {
               return processarFluxoGuiado(de, txtStr, dados, etapa)
             }
@@ -590,7 +590,7 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
       }
 
       // ── FLUXO GUIADO: roteamento para etapas do novo fluxo ──
-      if (dados._guiado || etapa === 'menu_inicial' || etapa === 'local_data' ||
+      if (dados._guiado || etapa === 'menu_inicial' || etapa === 'local_data' || etapa === 'lote_tipo' ||
           etapa === 'categorias' || etapa === 'peso_lote' || etapa === 'confirmacao_guiada') {
         if (temAudio) {
           responderWhatsApp(res, '_Ouvindo seu áudio..._')
