@@ -12,10 +12,12 @@
     "twilio": "^4.19.0",
     "openai": "^4.28.0",
     "@supabase/supabase-js": "^2.39.0",
+    "@anthropic-ai/sdk": "^0.20.0",
     "axios": "^1.6.0",
     "dotenv": "^16.4.0",
     "form-data": "^4.0.0",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"
