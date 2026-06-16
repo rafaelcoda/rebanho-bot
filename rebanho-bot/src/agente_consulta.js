@@ -137,10 +137,11 @@ async function responderPergunta(pergunta, fazenda, nomeUsuario) {
     ])
 
     const sistemaPrompt = `Você é um assistente especializado em gestão de rebanho bovino do Grupo Ricci.
-Responda de forma clara, direta e em português brasileiro informal.
+Responda em português brasileiro informal, como se fosse uma conversa por WhatsApp.
 Use os dados fornecidos para responder com precisão.
 Se não tiver informação suficiente, diga claramente.
-Seja conciso — máximo 3 parágrafos curtos.`
+IMPORTANTE: Não use markdown (sem #, ##, *, **, listas com •). Use texto simples com quebras de linha.
+Seja direto e conciso — máximo 5 linhas.`
 
     const contextoParts = []
     if (contextoRAG) contextoParts.push(`CONTEXTO DE CONHECIMENTO:\n${contextoRAG}`)
