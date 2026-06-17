@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781723368
+// v1781724718
 
 const express = require('express')
 const twilio = require('twilio')
@@ -272,8 +272,16 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
     await enviarMensagem(de, '_Processando local e data..._')
     try {
       const extraido = await extrairDadosRebanho(resposta)
+      // Resolver nome da fazenda para o nome oficial do banco
+      let fazendaNome = extraido.fazenda || dados.fazenda || null
+      if (fazendaNome) {
+        try {
+          const fazObj = await dbFazendas.resolverFazenda(fazendaNome)
+          if (fazObj) fazendaNome = fazObj.nome
+        } catch(e) {}
+      }
       const novosDados = Object.assign({}, dados, {
-        fazenda: extraido.fazenda || dados.fazenda || null,
+        fazenda: fazendaNome,
         lote_nome: extraido.lote_nome || null,
         dia: extraido.dia || null,
         mes: extraido.mes || null,
@@ -1484,7 +1492,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781723368', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781724718', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
