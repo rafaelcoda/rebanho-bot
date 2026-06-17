@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781724718
+// v1781737695
 
 const express = require('express')
 const twilio = require('twilio')
@@ -137,12 +137,24 @@ async function perguntarLoteTipo(de, dados) {
     }
   } catch(e) {}
 
-  await enviarMensagem(de,
-    'Informe: *subdivisão*, *lote* e *tipo de animal*.' + msgSubs + msgLotes +
-    '\n\nTipos: Nelore, Angus, Cruzado, Girolando, Outros' +
-    '\n\n_Ex: "Confinamento, Lote 3, Nelore" · "Pasto 01, Lote Recria, Cruzado"_' +
-    '\n_Ou responda "pular" para continuar._'
-  )
+  // Usar lista interativa se tiver subdivisões disponíveis
+  if (subsDisp?.length > 0) {
+    await enviarLista(de,
+      'Em qual subdivisão está o lote?',
+      'Selecionar subdivisão',
+      subsDisp.map(s => ({ id: s.id || s.nome, title: s.nome, description: s.tipo || '' }))
+    ).catch(() => {})
+    await enviarMensagem(de,
+      'Depois informe o *lote* e o *tipo de animal*.' + msgLotes +
+      '\n\nEx: "Lote 3, Nelore"'
+    )
+  } else {
+    await enviarMensagem(de,
+      'Informe: *subdivisão*, *lote* e *tipo de animal*.' + msgSubs + msgLotes +
+      '\n\nTipos: Nelore, Angus, Cruzado, Girolando, Outros' +
+      '\n\n_Ex: "Confinamento, Lote 3, Nelore"_'
+    )
+  }
 }
 
 // ─── Extrair subdivisão, lote e tipo de animal via GPT ──────────────────────
@@ -850,8 +862,17 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
       return
     }
 
-    responderWhatsApp(res,
-      `*Olá${usuario.nome ? ', ' + usuario.nome.split(' ')[0] : ''}! Sou o assistente de rebanho do Grupo Ricci.* 🐄\n\nEnvie um *áudio* com os dados do mapa de rebanho.\n\nComandos:\n- *resumo* — últimos 3 meses\n- *lotes* — resumo por lote\n- *cancelar* — cancela operação em andamento`)
+    // Menu com botões interativos
+  const nomeMsg = usuario.nome ? ', ' + usuario.nome.split(' ')[0] : ''
+  enviarBotoes(de,
+    `Olá${nomeMsg}! 👋 O que deseja registrar hoje?`,
+    [
+      { id: 'entradas', title: 'Entradas (nasc/compra)' },
+      { id: 'saidas', title: 'Saídas (morte/venda)' },
+      { id: 'outros', title: 'Ver mais opções' }
+    ]
+  ).catch(() => {})
+  responderWhatsApp(res, '_Abrindo menu..._')
   } catch (err) {
     console.error('Erro webhook:', err.message)
     console.error('Stack:', err.stack?.split('\n').slice(0,3).join(' | '))
@@ -1467,6 +1488,99 @@ async function enviarMensagem(para, mensagem) {
   }
 }
 
+// ─── Enviar lista interativa via Twilio Content API ───────────────────────────
+// items: [{ id, title, description? }]
+async function enviarLista(para, body, buttonLabel, items, sections) {
+  try {
+    const axios = require('axios')
+    const accountSid = process.env.TWILIO_ACCOUNT_SID
+    const authToken  = process.env.TWILIO_AUTH_TOKEN
+    const from       = process.env.TWILIO_WHATSAPP_NUMBER.replace('whatsapp:', '')
+
+    // Criar content template dinamicamente
+    const sectionList = sections || [{ title: 'Opções', items: items.map(i => ({ id: i.id, item: i.title, description: i.description || '' })) }]
+
+    const contentResp = await axios.post(
+      `https://content.twilio.com/v1/Content`,
+      {
+        friendly_name: `list_${Date.now()}`,
+        language: 'pt-BR',
+        variables: {},
+        types: {
+          'twilio/list-picker': {
+            body,
+            button: buttonLabel || 'Selecionar',
+            items: sectionList
+          }
+        }
+      },
+      { auth: { username: accountSid, password: authToken } }
+    )
+
+    const contentSid = contentResp.data.sid
+    const toNumber = para.replace('whatsapp:', '')
+
+    const msg = await axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      new URLSearchParams({
+        From: from.includes('whatsapp') ? from : `whatsapp:${from}`,
+        To: para,
+        ContentSid: contentSid,
+      }),
+      { auth: { username: accountSid, password: authToken },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    )
+
+    console.log('[Lista] enviada para', para, '| sid:', msg.data.sid)
+    return msg.data
+  } catch (err) {
+    console.log('[Lista] Erro:', err.response?.data || err.message, '— fallback texto')
+    // Fallback para texto simples se lista falhar
+    const texto = body + '\n\n' + items.map((i, idx) => `${idx+1}. ${i.title}`).join('\n')
+    return enviarMensagem(para, texto)
+  }
+}
+
+// ─── Enviar botões interativos (até 3) via Twilio Content API ─────────────────
+async function enviarBotoes(para, body, botoes) {
+  try {
+    const axios = require('axios')
+    const accountSid = process.env.TWILIO_ACCOUNT_SID
+    const authToken  = process.env.TWILIO_AUTH_TOKEN
+    const from       = process.env.TWILIO_WHATSAPP_NUMBER
+
+    const contentResp = await axios.post(
+      'https://content.twilio.com/v1/Content',
+      {
+        friendly_name: `btns_${Date.now()}`,
+        language: 'pt-BR',
+        variables: {},
+        types: {
+          'twilio/quick-reply': {
+            body,
+            actions: botoes.map(b => ({ type: 'QUICK_REPLY', title: b.title, id: b.id || b.title }))
+          }
+        }
+      },
+      { auth: { username: accountSid, password: authToken } }
+    )
+
+    const msg = await axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      new URLSearchParams({ From: from, To: para, ContentSid: contentResp.data.sid }),
+      { auth: { username: accountSid, password: authToken },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    )
+
+    console.log('[Botoes] enviados para', para)
+    return msg.data
+  } catch (err) {
+    console.log('[Botoes] Erro:', err.response?.data || err.message, '— fallback texto')
+    const texto = body + '\n\n' + botoes.map((b, i) => `${i+1}️⃣ ${b.title}`).join('\n') + '\n\n_Responda com o número._'
+    return enviarMensagem(para, texto)
+  }
+}
+
 // Segurança global: nunca derrubar o processo por promise rejeitada
 process.on('unhandledRejection', (err) => {
   console.error('UnhandledRejection:', err?.message || err)
@@ -1492,7 +1606,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781724718', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781737695', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
