@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781739312
+// v1781739343
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1622,7 +1622,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781739312', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781739343', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1883,70 +1883,7 @@ app.listen(PORT, () => {
   setInterval(function() {
     getAgenteLogs().executarCiclo({ limite: 200 }).catch(e => console.log('AgenteLogs cron:', e.message))
   }, 10 * 60 * 1000)
-})  if (etapa === 'lote_tipo') {
-    await enviarMensagem(de, '_Processando..._')
-
-    const subsMenu = dados._subsMenu
-    const lotesMenu = dados._lotesMenu
-
-    // Seleção numerada de subdivisão
-    const idxSubs = subsMenu ? parsearOpcao(resposta, subsMenu.length) : null
-    if (idxSubs !== null && subsMenu) {
-      const subEscolhida = subsMenu[idxSubs]
-      const nd = Object.assign({}, dados, { subdivisao_nome: subEscolhida.nome, subdivisao_id: subEscolhida.id, _subsMenu: null })
-      setSessao(de, nd, 'lote_tipo')
-      try {
-        const faz = await dbFazendas.resolverFazenda(dados.fazenda)
-        if (faz) { await perguntarLoteAposSub(de, nd, faz.id); return }
-      } catch(e) {}
-      await enviarMensagem(de, 'Qual o *lote* e *tipo de animal* no ' + subEscolhida.nome + '?\n\nEx: "Lote 3, Nelore"')
-      return
-    }
-
-    // Seleção numerada de lote
-    const idxLote = lotesMenu ? parsearOpcao(resposta, lotesMenu.length) : null
-    if (idxLote !== null && lotesMenu) {
-      const loteEscolhido = lotesMenu[idxLote]
-      const nd = Object.assign({}, dados, { lote_nome: loteEscolhido.nome, lote_id: loteEscolhido.id, _lotesMenu: null })
-      setSessao(de, nd, 'lote_tipo')
-      await enviarMenuNumerico(de,
-        'Tipo de animal no *' + loteEscolhido.nome + '*?',
-        ['Nelore', 'Angus', 'Cruzado', 'Girolando', 'Outros']
-      )
-      return
-    }
-
-    // Seleção numerada de tipo de animal (após lote já definido)
-    if (dados.lote_nome && !dados.tipo_animal) {
-      const tipos = ['Nelore','Angus','Cruzado','Girolando','Outros']
-      const idxTipo = parsearOpcao(resposta, tipos.length)
-      if (idxTipo !== null) {
-        const nd = Object.assign({}, dados, { tipo_animal: tipos[idxTipo] })
-        setSessao(de, nd, 'categorias')
-        await enviarMensagem(de,
-          '✅ Ok!\n\nAgora informe as *quantidades por categoria* para *' + nd.label_tipo + '*:\n\n' +
-          ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m',
-           '1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m',
-           '2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m',
-           '2.6 Novilhas acima 36m','2.7 Vacas','2.8 Matrizes PO'].map(c => '• ' + c).join('\n') +
-          '\n\n_Ex: "50 garrotes 1.3, 30 novilhas 2.5" ou áudio._'
-        )
-        return
-      }
-    }
-
-    // Fallback: extração livre por GPT
-    let lotesDisp = []
-    let subsDisp = []
-    try {
-      const faz = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
-      if (faz) {
-        lotesDisp = await dbFazendas.listarLotes(faz.id)
-        const { data: subs } = await getSupabase().from('subdivisoes').select('id,nome,tipo').eq('fazenda_id', faz.id).eq('ativo', true)
-        subsDisp = subs || []
-      }
-    } catch(e) {}
-    const extraido = await extrairLoteTipo(resposta, lotesDisp, subsDisp)
+})
       const novosDados = Object.assign({}, dados, {
         subdivisao_nome: extraido.subdivisao || dados.subdivisao_nome || null,
         lote_nome: extraido.lote || dados.lote_nome || null,
@@ -3225,7 +3162,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781739312', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781739343', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
