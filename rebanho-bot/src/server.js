@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781712068
+// v1781712687
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1437,7 +1437,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781712068', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781712687', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1612,6 +1612,53 @@ app.get('/api/animais', async (req, res) => {
     if (error) throw new Error(error.message)
     res.json({ ok: true, data })
   } catch (err) { res.status(500).json({ ok: false, error: err.message }) }
+})
+
+// ─── API endpoints para dashboard (usa service key no servidor) ──────────────
+const { createClient: createClientDash } = require('@supabase/supabase-js')
+let _sbDash = null
+function getSbDash() {
+  if (!_sbDash) _sbDash = createClientDash(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY,
+    { global: { WebSocket: require('ws') } }
+  )
+  return _sbDash
+}
+
+app.get('/api/dashboard/movimentacoes', async (req, res) => {
+  try {
+    const { fazenda, desde, tipo } = req.query
+    let q = getSbDash().from('movimentacoes_lote').select('*,lotes(nome)').order('data_mov', { ascending: false }).limit(200)
+    if (desde) q = q.gte('data_mov', desde)
+    if (fazenda && fazenda !== 'Grupo Ricci') q = q.eq('fazenda', fazenda)
+    if (tipo) q = q.eq('tipo', tipo)
+    const { data, error } = await q
+    if (error) return res.status(500).json({ error: error.message })
+    res.json(data)
+  } catch(e) { res.status(500).json({ error: e.message }) }
+})
+
+app.get('/api/dashboard/lotes', async (req, res) => {
+  try {
+    const { fazenda } = req.query
+    let q = getSbDash().from('lotes').select('id,nome,finalidade,fazenda_id,fazendas(nome)').eq('ativo', true).order('nome')
+    if (fazenda && fazenda !== 'Grupo Ricci') {
+      const { data: fazs } = await getSbDash().from('fazendas').select('id').eq('nome', fazenda)
+      if (fazs?.[0]) q = q.eq('fazenda_id', fazs[0].id)
+    }
+    const { data, error } = await q
+    if (error) return res.status(500).json({ error: error.message })
+    res.json(data)
+  } catch(e) { res.status(500).json({ error: e.message }) }
+})
+
+app.get('/api/dashboard/alertas', async (req, res) => {
+  try {
+    const { data, error } = await getSbDash().from('bot_anomalias').select('*').order('detectado_em', { ascending: false }).limit(20)
+    if (error) return res.status(500).json({ error: error.message })
+    res.json(data)
+  } catch(e) { res.status(500).json({ error: e.message }) }
 })
 
 // ─── Dashboard de gestão ────────────────────────────────────
@@ -1968,18 +2015,21 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://gboefoghltmientdqfkn.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdib2Vmb2dobHRtaWVudGRxZmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNDE5OTEsImV4cCI6MjA5NjYxNzk5MX0.qXs6S3BaxFMYnEIkbqFe_0LJKX2b_0_VT4-2_7W_qY0'
-
 let fazendaAtual = 'Grupo Ricci'
 let chartTipos = null
 let chartMF = null
 
-async function sb(table, params = '') {
-  const r = await fetch(\`\${SUPABASE_URL}/rest/v1/\${table}\${params}\`, {
-    headers: { apikey: SUPABASE_KEY, Authorization: \`Bearer \${SUPABASE_KEY}\` }
-  })
-  return r.json()
+async function api(endpoint, params = {}) {
+  const qs = Object.entries(params).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>\`\${k}=\${encodeURIComponent(v)}\`).join('&')
+  const url = \`/api/dashboard/\${endpoint}\${qs ? '?' + qs : ''}\`
+  try {
+    const r = await fetch(url)
+    if (!r.ok) throw new Error(\`HTTP \${r.status}\`)
+    return r.json()
+  } catch(e) {
+    console.error(\`Erro ao buscar \${endpoint}:\`, e)
+    return []
+  }
 }
 
 function fmt(n) { return (n ?? 0).toLocaleString('pt-BR') }
@@ -2006,9 +2056,7 @@ async function carregarDados() {
 
   document.getElementById('page-sub').textContent = \`Última atualização: \${new Date().toLocaleTimeString('pt-BR')}\`
 
-  let query = \`?select=*&data_mov=gte.\${desdeStr}&order=data_mov.desc\`
-  if (fazendaAtual !== 'Grupo Ricci') query += \`&fazenda=eq.\${encodeURIComponent(fazendaAtual)}\`
-  const movs = await sb('movimentacoes_lote', query)
+  const movs = await api('movimentacoes', { fazenda: fazendaAtual, desde: desdeStr })
 
   if (!Array.isArray(movs)) { console.error('Erro ao buscar movimentações:', movs); return }
 
@@ -2084,20 +2132,14 @@ async function carregarDados() {
 
 async function carregarLotes() {
   const el = document.getElementById('lotes-list')
-  let q = \`?select=id,nome,finalidade,fazenda_id,fazendas(nome)&ativo=eq.true&order=nome\`
-  if (fazendaAtual !== 'Grupo Ricci') {
-    const fazs = await sb('fazendas', \`?nome=eq.\${encodeURIComponent(fazendaAtual)}&select=id\`)
-    if (fazs?.[0]?.id) q += \`&fazenda_id=eq.\${fazs[0].id}\`
-  }
-  const lotes = await sb('lotes', q)
+  const lotes = await api('lotes', { fazenda: fazendaAtual })
   document.getElementById('lotes-fazenda').textContent = fazendaAtual === 'Grupo Ricci' ? 'todas as fazendas' : fazendaAtual
 
   if (!lotes?.length) { el.innerHTML = '<div class="empty">Nenhum lote encontrado</div>'; return }
 
   const colors = ['#1D9E75','#378ADD','#7F77DD','#D4537E','#EF9F27','#E24B4A','#1D9E75']
   const finalidades = { cria:'Cria', recria:'Recria', engorda:'Engorda', reproducao:'Reprodução', descarte:'Descarte', geral:'Geral' }
-  const maxLotes = Math.min(lotes.length, 100)
-  const movLotes = await sb('movimentacoes_lote', \`?select=lote_id,quantidade,tipo&lote_id=in.(\${lotes.slice(0,maxLotes).map(l=>l.id).join(',')})\`)
+  const movLotes = await api('movimentacoes', { fazenda: fazendaAtual)
 
   const totalGlobal = lotes.reduce((s, l) => {
     const movs = movLotes?.filter?.(m => m.lote_id === l.id) || []
@@ -2135,7 +2177,7 @@ async function carregarLotes() {
 }
 
 async function carregarAlertas() {
-  const alertas = await sb('bot_anomalias', '?select=*&order=detectado_em.desc&limit=5')
+  const alertas = await api('alertas')
   const el = document.getElementById('alertas-list')
   const count = alertas?.length || 0
   document.getElementById('alertas-count').textContent = \`\${count} recente\${count !== 1 ? 's' : ''}\`
@@ -2176,10 +2218,7 @@ async function carregarAlertas() {
 
 async function carregarMovimentacoes() {
   const tipo = document.getElementById('tipo-sel').value
-  let q = \`?select=*,lotes(nome)&order=data_mov.desc&limit=50\`
-  if (fazendaAtual !== 'Grupo Ricci') q += \`&fazenda=eq.\${encodeURIComponent(fazendaAtual)}\`
-  if (tipo) q += \`&tipo=eq.\${tipo}\`
-  const movs = await sb('movimentacoes_lote', q)
+  const movs = await api('movimentacoes', { fazenda: fazendaAtual, tipo })
   document.getElementById('movs-sub').textContent = \`\${movs?.length || 0} registros\`
 
   if (!movs?.length) {
