@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781721088
+// v1781721200
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1477,7 +1477,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781721088', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781721200', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1714,12 +1714,11 @@ app.listen(PORT, () => {
   const agenteAnalise = require('./agente_analise')
   agenteAnalise.iniciarAgendamento()
   console.log(`Servidor na porta ${PORT}`)
-  supabase.from('configuracoes').select('chave, valor').then(({ data }) => {
-    if (data) data.forEach(c => { process.env['CFG_'+c.chave.toUpperCase()] = c.valor })
-    console.log('Configurações carregadas:', (data||[]).length)
-  }).catch(() => {})
   setTimeout(() => {
-    getRag().indexarExemplosPendentes().catch(e => console.log('RAG indexação:', e.message))
+    supabase.from('configuracoes').select('chave, valor').then(({ data }) => {
+      if (data) data.forEach(c => { process.env['CFG_'+c.chave.toUpperCase()] = c.valor })
+      console.log('Configurações carregadas:', (data||[]).length)
+    }).catch(() => {})
     setTimeout(function() { require('./anomalias').analisarRebanho('Grupo Ricci').catch(function(){}) }, 20000)
     // Agente de logs — primeira execução após 30s
     setTimeout(function() {
