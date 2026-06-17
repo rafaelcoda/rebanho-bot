@@ -11,7 +11,15 @@ DROP TABLE IF EXISTS pastos CASCADE;
 DROP TABLE IF EXISTS subdivisoes CASCADE;
 DROP TABLE IF EXISTS areas CASCADE;
 
--- ── 2. REMOVER LINHAS ANTIGAS DE FAZENDAS (dados fictícios) ──
+-- ── 2. REMOVER LINHAS ANTIGAS DE FAZENDAS (dados fictícios, apenas sem movimentações) ──
+-- Atualizar movimentações que apontam para fazendas fictícias para NULL
+UPDATE movimentacoes_lote SET fazenda_id = NULL
+WHERE fazenda_id IN (
+  SELECT id FROM fazendas WHERE nome_normalizado IN (
+    'grupo ricci', 'fazenda a', 'fazenda b', 'fazenda c'
+  )
+);
+-- Agora pode deletar
 DELETE FROM fazendas WHERE nome_normalizado IN (
   'grupo ricci', 'fazenda a', 'fazenda b', 'fazenda c'
 );
