@@ -2,8 +2,7 @@
   "name": "rebanho-bot-root",
   "version": "1.0.0",
   "scripts": {
-    "start": "cd rebanho-bot && node src/server.js",
-    "install": "cd rebanho-bot && npm install"
+    "start": "node src/server.js"
   },
   "engines": {
     "node": ">=18"
