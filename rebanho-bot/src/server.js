@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781739509
+// v1781739687
 
 const express = require('express')
 const twilio = require('twilio')
@@ -309,6 +309,35 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
 
   // ── Etapa: lote e tipo de animal ──────────────────────────
   if (etapa === 'lote_tipo') {
+    // ── Cascata numerada ──
+    var _sm = dados._subsMenu, _lm = dados._lotesMenu
+    var _is = _sm ? parsearOpcao(resposta, _sm.length) : null
+    if (_is !== null && _sm) {
+      var _sub = _sm[_is]
+      var _nd1 = Object.assign({}, dados, { subdivisao_nome: _sub.nome, subdivisao_id: _sub.id, _subsMenu: null })
+      setSessao(de, _nd1, 'lote_tipo')
+      try { var _f1 = await dbFazendas.resolverFazenda(dados.fazenda); if (_f1) { await perguntarLoteAposSub(de, _nd1, _f1.id); return } } catch(e2) {}
+      await enviarMensagem(de, 'Qual lote no ' + _sub.nome + '? Ex: "Lote 3, Nelore"'); return
+    }
+    var _il = _lm ? parsearOpcao(resposta, _lm.length) : null
+    if (_il !== null && _lm) {
+      var _lote = _lm[_il]
+      var _nd2 = Object.assign({}, dados, { lote_nome: _lote.nome, lote_id: _lote.id, _lotesMenu: null })
+      setSessao(de, _nd2, 'lote_tipo')
+      await enviarMenuNumerico(de, 'Tipo de animal no *' + _lote.nome + '*?', ['Nelore','Angus','Cruzado','Girolando','Outros']); return
+    }
+    if (dados.lote_nome && !dados.tipo_animal) {
+      var _tipos = ['Nelore','Angus','Cruzado','Girolando','Outros']
+      var _it = parsearOpcao(resposta, _tipos.length)
+      if (_it !== null) {
+        var _nd3 = Object.assign({}, dados, { tipo_animal: _tipos[_it] })
+        var _cats3 = CATEGORIAS_POR_TIPO[_nd3.tipo_guiado] || []
+        setSessao(de, _nd3, 'categorias')
+        await enviarMensagem(de, '✅ Ok!\n\nAgora informe as *quantidades por categoria* para *' + _nd3.label_tipo + '*:\n\n' + _cats3.map(function(c) { return '• ' + c }).join('\n') + '\n\n_Ex: "50 garrotes 1.3, 30 bois 1.6" ou áudio._')
+        return
+      }
+    }
+    // ── fim cascata ──
     try {
       // Extrair lote e tipo de animal do texto via GPT
       let lotesDisp = []
@@ -1587,7 +1616,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781739509', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781739687', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
