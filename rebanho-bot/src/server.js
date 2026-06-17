@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781723045
+// v1781723077
 
 const express = require('express')
 const twilio = require('twilio')
@@ -324,7 +324,7 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       await enviarMensagem(de,
         '✅ Ok!\n\n' +
         'Agora informe as *quantidades por categoria* para *' + dados.label_tipo + '*:\n\n' +
-        listaCats + '\n\n_Pode enviar um áudio com os números por categoria._'
+        listaCats + '\n\n_Ex: "50 garrotes 1.3, 30 bois 1.6" ou áudio falando as quantidades._'
       )
     } catch(e) {
       await enviarMensagem(de, '_Não entendi. Informe o lote e tipo de animal, ex: "Lote Engorda, Nelore"._')
@@ -1475,7 +1475,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781723045', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781723077', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
