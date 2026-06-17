@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781715269
+// v1781719391
 
 const express = require('express')
 const twilio = require('twilio')
@@ -106,63 +106,77 @@ async function enviarMenuInicial(de, usuario) {
   )
 }
 
-// ─── Perguntar lote e tipo de animal ─────────────────────────────────────────
+// ─── Perguntar subdivisão, lote e tipo de animal ─────────────────────────────
 async function perguntarLoteTipo(de, dados) {
-  // Buscar lotes disponíveis da fazenda
+  let msgSubs = ''
   let msgLotes = ''
   try {
     const fazendaObj = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
     if (fazendaObj) {
+      // Buscar subdivisões da fazenda
+      const { data: subs } = await require('./supabase').createClient(
+        process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY
+      ).from('subdivisoes').select('nome,tipo').eq('fazenda_id', fazendaObj.id).eq('ativo', true).order('nome')
+      if (subs?.length) {
+        msgSubs = '\n\nSubdivisões: ' + subs.map(s => s.nome).join(', ')
+      }
       const lotes = await dbFazendas.listarLotes(fazendaObj.id)
       if (lotes.length > 0) {
-        msgLotes = '\n\nLotes disponíveis:\n' + lotes.map(l => '• ' + l.nome).join('\n')
+        msgLotes = '\nLotes: ' + lotes.map(l => l.nome).join(', ')
       }
     }
   } catch(e) {}
 
   await enviarMensagem(de,
-    'Em qual *lote* e qual o *tipo de animal*?' + msgLotes +
+    'Informe: *subdivisão*, *lote* e *tipo de animal*.' + msgSubs + msgLotes +
     '\n\nTipos: Nelore, Angus, Cruzado, Girolando, Outros' +
-    '\n\n_Ex: "Lote Engorda, Nelore" — ou responda "pular" para continuar._'
+    '\n\n_Ex: "Confinamento, Lote 3, Nelore" · "Pasto 01, Lote Recria, Cruzado"_' +
+    '\n_Ou responda "pular" para continuar._'
   )
 }
 
-// ─── Extrair lote e tipo de animal via GPT ──────────────────────────────────
-async function extrairLoteTipo(texto, lotesDisponiveis) {
+// ─── Extrair subdivisão, lote e tipo de animal via GPT ──────────────────────
+async function extrairLoteTipo(texto, lotesDisponiveis, subsDisponiveis) {
   const t = (texto || '').toLowerCase().trim()
 
-  // Verificar se quer pular
   if (t.includes('pular') || t.includes('skip') || t.includes('não sei') || t.includes('nao sei') || t.length < 2) {
-    return { lote: null, tipo_animal: null }
+    return { subdivisao: null, lote: null, tipo_animal: null }
   }
 
   try {
     const axios = require('axios')
 
+    const subsStr = subsDisponiveis?.length
+      ? 'Subdivisões disponíveis: ' + subsDisponiveis.map(s => s.nome).join(', ')
+      : 'Subdivisões: Pasto 01, Pasto 02, Confinamento, Piquete 1, Piquete 2'
+
     const lotesStr = lotesDisponiveis?.length
       ? 'Lotes disponíveis: ' + lotesDisponiveis.map(l => l.nome).join(', ')
-      : 'Lotes: Lote Cria, Lote Recria, Lote Engorda, Lote Reprodução'
+      : 'Lotes: Lote 1, Lote 2, Lote Engorda, Lote Recria, Lote Cria'
 
-    const prompt = `Extraia o lote e o tipo de animal do texto a seguir.
+    const prompt = `Extraia a subdivisão, o lote e o tipo de animal do texto a seguir.
+Hierarquia: Fazenda > Subdivisão (Pasto/Confinamento/Piquete) > Lote > Tipo de animal
+
+${subsStr}
 ${lotesStr}
 Tipos de animal válidos: Nelore, Angus, Cruzado, Girolando, Outros
 
 Texto (pode conter erros de transcrição de áudio): "${texto}"
 
 Retorne APENAS JSON válido, sem markdown:
-{"lote": "nome exato do lote ou null", "tipo_animal": "tipo exato ou null"}
+{"subdivisao": "nome exato da subdivisao ou null", "lote": "nome exato do lote ou null", "tipo_animal": "tipo exato ou null"}
 
 Exemplos:
-- "lote engorda nelore" → {"lote": "Lote Engorda", "tipo_animal": "Nelore"}
-- "recria, gado cruzado" → {"lote": "Lote Recria", "tipo_animal": "Cruzado"}
-- "não sei" → {"lote": null, "tipo_animal": null}
-- "engorda" → {"lote": "Lote Engorda", "tipo_animal": null}`
+- "confinamento, lote 3, nelore" → {"subdivisao": "Confinamento", "lote": "Lote 3", "tipo_animal": "Nelore"}
+- "pasto 01, lote recria, cruzado" → {"subdivisao": "Pasto 01", "lote": "Lote Recria", "tipo_animal": "Cruzado"}
+- "piquete 2, lote engorda" → {"subdivisao": "Piquete 2", "lote": "Lote Engorda", "tipo_animal": null}
+- "não sei" → {"subdivisao": null, "lote": null, "tipo_animal": null}`
 
     const resp = await axios.post(
       'https://api.openai.com/v1/chat/completions',
       {
         model: 'gpt-4o-mini',
-        max_tokens: 100,
+        max_tokens: 150,
         temperature: 0,
         messages: [{ role: 'user', content: prompt }]
       },
@@ -172,15 +186,20 @@ Exemplos:
     const raw = resp.data.choices[0].message.content.trim()
     const clean = raw.replace(/```json|```/g, '').trim()
     const result = JSON.parse(clean)
-    console.log(`[extrairLoteTipo] "${texto}" → lote:${result.lote} tipo:${result.tipo_animal}`)
-    return { lote: result.lote || null, tipo_animal: result.tipo_animal || null }
+    console.log(`[extrairLoteTipo] "${texto}" → sub:${result.subdivisao} lote:${result.lote} tipo:${result.tipo_animal}`)
+    return {
+      subdivisao: result.subdivisao || null,
+      lote: result.lote || null,
+      tipo_animal: result.tipo_animal || null
+    }
   } catch (err) {
-    console.log('[extrairLoteTipo] Erro GPT:', err.message, '— usando fallback regex')
-    // Fallback: regex simples
+    console.log('[extrairLoteTipo] Erro GPT:', err.message, '— fallback regex')
     const tipos = ['nelore', 'angus', 'cruzado', 'girolando']
     const tipo_animal = tipos.find(tp => t.includes(tp))
-    const matchLote = t.match(/lote\s+\w+/i) || t.match(/retiro\s+\w+/i)
+    const matchSub = t.match(/(?:pasto|confinamento|piquete|curral)\s*\d*/i)
+    const matchLote = t.match(/lote\s+[\w]+/i)
     return {
+      subdivisao: matchSub ? matchSub[0].trim().replace(/^\w/, c => c.toUpperCase()) : null,
       lote: matchLote ? matchLote[0].replace(/^\w/, c => c.toUpperCase()) : null,
       tipo_animal: tipo_animal ? tipo_animal.charAt(0).toUpperCase() + tipo_animal.slice(1) : null
     }
@@ -273,12 +292,19 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
     try {
       // Extrair lote e tipo de animal do texto via GPT
       let lotesDisp = []
+      let subsDisp = []
       try {
         const faz = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
-        if (faz) lotesDisp = await dbFazendas.listarLotes(faz.id)
+        if (faz) {
+          lotesDisp = await dbFazendas.listarLotes(faz.id)
+          const sbClient = require('./supabase').supabase
+          const { data: subs } = await sbClient.from('subdivisoes').select('id,nome,tipo').eq('fazenda_id', faz.id).eq('ativo', true)
+          subsDisp = subs || []
+        }
       } catch(e) {}
-      const extraido = await extrairLoteTipo(resposta, lotesDisp)
+      const extraido = await extrairLoteTipo(resposta, lotesDisp, subsDisp)
       const novosDados = Object.assign({}, dados, {
+        subdivisao_nome: extraido.subdivisao || dados.subdivisao_nome || null,
         lote_nome: extraido.lote || dados.lote_nome || null,
         tipo_animal: extraido.tipo_animal || dados.tipo_animal || null,
       })
@@ -412,7 +438,9 @@ function gerarResumoGuiado(dados) {
 
   return '📋 *Confira antes de salvar:*\n\n' +
     '📌 *Tipo:* ' + dados.label_tipo + '\n' +
-    '📍 *Local:* ' + (dados.fazenda || 'Grupo Ricci') + (dados.lote_nome ? ' — ' + dados.lote_nome : '') + '\n' +
+    '📍 *Local:* ' + (dados.fazenda || 'Grupo Ricci') +
+      (dados.subdivisao_nome ? ' › ' + dados.subdivisao_nome : '') +
+      (dados.lote_nome ? ' › ' + dados.lote_nome : '') + '\n' +
     '📅 *Data:* ' + periodo +
     pesoLine + '\n\n*Por categoria:*\n' + (linhas || '  —') + '\n\n' +
     'Está correto? Responda *sim* para salvar ou *não* para cancelar.'
@@ -1437,7 +1465,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781715269', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781719391', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
