@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781720589
+// v1781720856
 
 const express = require('express')
 const twilio = require('twilio')
@@ -65,10 +65,18 @@ function getTwilioClient() {
   return _twilioClient
 }
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-)
+let _supabaseServer = null
+function getSupabase() {
+  if (!_supabaseServer) _supabaseServer = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY,
+    { global: { WebSocket: require('ws') } }
+  )
+  return _supabaseServer
+}
+const supabase = new Proxy({}, {
+  get(_, prop) { return getSupabase()[prop] }
+})
 
 // ─── Sessões multi-etapa ──────────────────────────────────────────────────────
 // Estrutura: { dados, etapa, ts }
@@ -1469,7 +1477,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781720589', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781720856', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
