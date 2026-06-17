@@ -458,8 +458,7 @@ Exemplos:
 Se não encontrar peso, retorne: { "peso_total_kg": null, "peso_medio_kg": null, "unidade_original": null }
 
 Texto: "${texto}"`
-    const response = await chamarGroq([{ role: 'user', content: prompt }], 200)
-    const resultado = JSON.parse(response)
+    const resultado = await chamarGroq([{ role: 'user', content: prompt }], 200)
     return {
       peso_total_kg: resultado.peso_total_kg || null,
       peso_medio_kg: resultado.peso_medio_kg || null,
