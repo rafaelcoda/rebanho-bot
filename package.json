@@ -1,0 +1,11 @@
+{
+  "name": "rebanho-bot-root",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "cd rebanho-bot && node src/server.js",
+    "install": "cd rebanho-bot && npm install"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
