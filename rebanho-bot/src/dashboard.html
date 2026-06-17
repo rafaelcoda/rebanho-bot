@@ -185,21 +185,9 @@
         Todas
         <span class="nav-dot dot-green"></span>
       </button>
-      <button class="nav-item" onclick="setFazenda('Fazenda A'); highlightNav(this)">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
-        Fazenda A
-        <span class="nav-dot dot-green"></span>
-      </button>
-      <button class="nav-item" onclick="setFazenda('Fazenda B'); highlightNav(this)">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
-        Fazenda B
-        <span class="nav-dot dot-amber"></span>
-      </button>
-      <button class="nav-item" onclick="setFazenda('Fazenda C'); highlightNav(this)">
-        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
-        Fazenda C
-        <span class="nav-dot dot-green"></span>
-      </button>
+      <div id="nav-fazendas-list">
+        <!-- carregado dinamicamente -->
+      </div>
     </nav>
   </aside>
 
@@ -604,7 +592,27 @@ function showSection(name) {
   if (name === 'alertas') carregarAlertas()
 }
 
-carregarDados()
+carregarFazendas().then(() => carregarDados())
+
+async function carregarFazendas() {
+  try {
+    const fazendas = await api('fazendas')
+    const navEl = document.getElementById('nav-fazendas-list')
+    const tabsEl = document.getElementById('fazenda-tabs')
+    const svgIcon = '<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>'
+    if (navEl) {
+      navEl.innerHTML = fazendas.map(f => `
+        <button class="nav-item" onclick="setFazenda('${f.nome}'); highlightNav(this)">
+          ${svgIcon} ${f.nome}
+          <span class="nav-dot ${f.tipo === 'arrendamento' ? 'dot-amber' : 'dot-green'}"></span>
+        </button>`).join('')
+    }
+    if (tabsEl) {
+      tabsEl.innerHTML = `<button class="tab btn-sm active" onclick="setFazenda('Grupo Ricci'); highlightTab(this)">Todas</button>` +
+        fazendas.map(f => `<button class="tab btn-sm" onclick="setFazenda('${f.nome}'); highlightTab(this)">${f.nome}</button>`).join('')
+    }
+  } catch(e) { console.log('Erro carregarFazendas:', e.message) }
+}
 </script>
 </body>
 </html>
