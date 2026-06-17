@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781738301
+// v1781739312
 
 const express = require('express')
 const twilio = require('twilio')
@@ -118,6 +118,20 @@ function eSaudacao(texto) {
 }
 
 // ─── Fluxo guiado: enviar menu inicial ───────────────────────────────────────
+async function perguntarCategorias(de, dados) {
+  const cats = [
+    '1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m',
+    '1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO',
+    '2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m',
+    '2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Novilhas acima 36m','2.7 Vacas','2.8 Matrizes PO'
+  ]
+  await enviarMenuNumerico(de,
+    'Categorias para *' + (dados.label_tipo || dados.tipo_interno) + '*:',
+    cats,
+    '_Ex: "50 bois 1.6, 30 novilhas 2.5" ou áudio falando as quantidades._'
+  )
+}
+
 async function enviarMenuInicial(de, usuario) {
   const nome = usuario && usuario.nome ? ', ' + usuario.nome.split(' ')[0] : ''
   setSessao(de, { _guiado: true }, 'menu_inicial')
@@ -362,20 +376,6 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
     }
     return
   }
-
-async function perguntarCategorias(de, dados) {
-  const cats = [
-    '1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m',
-    '1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO',
-    '2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m',
-    '2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Novilhas acima 36m','2.7 Vacas','2.8 Matrizes PO'
-  ]
-  await enviarMenuNumerico(de,
-    `Categorias para *${dados.label_tipo || dados.tipo_interno}*:`,
-    cats,
-    '_Ex: "50 bois 1.6, 30 novilhas 2.5" ou áudio falando as quantidades._'
-  )
-}
 
   if (etapa === 'categorias') {
     await enviarMensagem(de, '_Processando categorias..._')
@@ -1622,7 +1622,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781738301', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781739312', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -3225,7 +3225,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781738301', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781739312', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
