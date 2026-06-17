@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781659269
+// v1781712068
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1437,7 +1437,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781659269', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781712068', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1612,6 +1612,625 @@ app.get('/api/animais', async (req, res) => {
     if (error) throw new Error(error.message)
     res.json({ ok: true, data })
   } catch (err) { res.status(500).json({ ok: false, error: err.message }) }
+})
+
+// ─── Dashboard de gestão ────────────────────────────────────
+const DASHBOARD_HTML = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rebanho — Grupo Ricci</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --green:   #1D9E75;
+    --green-l: #E1F5EE;
+    --green-d: #085041;
+    --red:     #E24B4A;
+    --red-l:   #FCEBEB;
+    --amber:   #EF9F27;
+    --amber-l: #FAEEDA;
+    --blue:    #378ADD;
+    --blue-l:  #E6F1FB;
+    --purple:  #7F77DD;
+    --gray:    #888780;
+    --gray-l:  #F1EFE8;
+    --bg:      #FAFAF8;
+    --surface: #FFFFFF;
+    --border:  rgba(0,0,0,0.08);
+    --text:    #2C2C2A;
+    --muted:   #5F5E5A;
+    --subtle:  #888780;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:      #1A1A18;
+      --surface: #242422;
+      --border:  rgba(255,255,255,0.08);
+      --text:    #E8E6DF;
+      --muted:   #B4B2A9;
+      --subtle:  #888780;
+      --gray-l:  #2C2C2A;
+      --green-l: #04342C;
+      --red-l:   #501313;
+      --amber-l: #412402;
+      --blue-l:  #042C53;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  
+  /* Layout */
+  .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  
+  /* Sidebar */
+  .sidebar { background: var(--surface); border-right: 0.5px solid var(--border); padding: 1.5rem 1rem; display: flex; flex-direction: column; gap: 2rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .logo { display: flex; align-items: center; gap: 10px; padding: 0 0.5rem; }
+  .logo-mark { width: 32px; height: 32px; background: var(--green); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; }
+  .logo-text { font-weight: 500; font-size: 15px; }
+  .logo-sub { font-size: 11px; color: var(--subtle); }
+  .nav-section { display: flex; flex-direction: column; gap: 2px; }
+  .nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--subtle); padding: 0 0.5rem; margin-bottom: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all 0.1s; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--gray-l); color: var(--text); }
+  .nav-item.active { background: var(--green-l); color: var(--green-d); font-weight: 500; }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; margin-left: auto; }
+  .dot-green { background: var(--green); }
+  .dot-red   { background: var(--red); }
+  .dot-amber { background: var(--amber); }
+
+  /* Main */
+  .main { padding: 2rem; overflow-x: hidden; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+  .topbar-left h1 { font-size: 20px; font-weight: 500; }
+  .topbar-left p  { font-size: 13px; color: var(--subtle); margin-top: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .badge-online { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--green-d); background: var(--green-l); padding: 5px 10px; border-radius: 20px; }
+  .badge-online::before { content: ''; width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
+  select { font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 0.5px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; background: var(--gray-l); border-radius: 8px; padding: 3px; margin-bottom: 1.5rem; width: fit-content; }
+  .tab { font-size: 12px; padding: 5px 14px; border-radius: 6px; border: none; background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* Metrics */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .metric { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; }
+  .metric-label { font-size: 11px; color: var(--subtle); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .metric-value { font-size: 28px; font-weight: 500; letter-spacing: -0.5px; }
+  .metric-sub { font-size: 11px; color: var(--subtle); margin-top: 4px; }
+  .up   { color: var(--green); }
+  .down { color: var(--red); }
+  .warn { color: var(--amber); }
+
+  /* Cards */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .card-title { font-size: 13px; font-weight: 500; }
+  .card-sub { font-size: 11px; color: var(--subtle); }
+
+  /* Lotes */
+  .lote-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .lote-row:last-child { border-bottom: none; }
+  .lote-left { display: flex; align-items: center; gap: 10px; }
+  .lote-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .lote-name { font-size: 13px; font-weight: 500; }
+  .lote-meta { font-size: 11px; color: var(--subtle); }
+  .lote-right { text-align: right; }
+  .lote-count { font-size: 15px; font-weight: 500; }
+  .lote-trend { font-size: 11px; }
+  .bar-wrap { margin-top: 4px; }
+  .bar-track { height: 3px; background: var(--gray-l); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+  /* Alertas */
+  .alerta-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .alerta-row:last-child { border-bottom: none; }
+  .alerta-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+  .alerta-icon.w  { background: var(--amber-l); color: var(--amber); }
+  .alerta-icon.i  { background: var(--blue-l); color: var(--blue); }
+  .alerta-icon.d  { background: var(--red-l); color: var(--red); }
+  .alerta-icon.s  { background: var(--green-l); color: var(--green); }
+  .alerta-body { flex: 1; }
+  .alerta-text { font-size: 12px; line-height: 1.5; }
+  .alerta-meta { font-size: 11px; color: var(--subtle); margin-top: 3px; }
+
+  /* Table */
+  .table { width: 100%; border-collapse: collapse; }
+  .table th { font-size: 11px; color: var(--subtle); text-align: left; padding: 6px 8px; border-bottom: 0.5px solid var(--border); font-weight: 500; }
+  .table td { font-size: 12px; padding: 9px 8px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  .table tr:last-child td { border-bottom: none; }
+  .pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .pill-green  { background: var(--green-l); color: var(--green-d); }
+  .pill-red    { background: var(--red-l); color: var(--red); }
+  .pill-amber  { background: var(--amber-l); color: var(--amber); }
+  .pill-blue   { background: var(--blue-l); color: var(--blue); }
+  .pill-gray   { background: var(--gray-l); color: var(--muted); }
+
+  /* Loading */
+  .loading { display: flex; align-items: center; justify-content: center; height: 120px; color: var(--subtle); font-size: 13px; gap: 8px; }
+  .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 2rem; color: var(--subtle); font-size: 13px; }
+  .btn-sm { font-size: 12px; padding: 5px 12px; border-radius: 6px; border: 0.5px solid var(--border); background: none; color: var(--text); cursor: pointer; }
+  .btn-sm:hover { background: var(--gray-l); }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">GR</div>
+      <div>
+        <div class="logo-text">Grupo Ricci</div>
+        <div class="logo-sub">Gestão de rebanho</div>
+      </div>
+    </div>
+    <nav class="nav-section">
+      <div class="nav-label">Visão geral</div>
+      <button class="nav-item active" onclick="showSection('dashboard')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" onclick="showSection('movimentacoes')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>
+        Movimentações
+      </button>
+      <button class="nav-item" onclick="showSection('alertas')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        Alertas
+        <span class="nav-dot dot-amber" id="alerta-dot" style="display:none;"></span>
+      </button>
+    </nav>
+    <nav class="nav-section">
+      <div class="nav-label">Fazendas</div>
+      <button class="nav-item" onclick="setFazenda('Grupo Ricci'); highlightNav(this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Todas
+        <span class="nav-dot dot-green"></span>
+      </button>
+      <button class="nav-item" onclick="setFazenda('Fazenda A'); highlightNav(this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+        Fazenda A
+        <span class="nav-dot dot-green"></span>
+      </button>
+      <button class="nav-item" onclick="setFazenda('Fazenda B'); highlightNav(this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+        Fazenda B
+        <span class="nav-dot dot-amber"></span>
+      </button>
+      <button class="nav-item" onclick="setFazenda('Fazenda C'); highlightNav(this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+        Fazenda C
+        <span class="nav-dot dot-green"></span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Dashboard section -->
+    <div id="section-dashboard">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1 id="page-title">Todas as fazendas</h1>
+          <p id="page-sub">Carregando dados...</p>
+        </div>
+        <div class="topbar-right">
+          <div class="badge-online">Bot online</div>
+          <select id="mes-sel" onchange="carregarDados()">
+            <option value="0">Este mês</option>
+            <option value="1">Mês passado</option>
+            <option value="3">Últimos 3 meses</option>
+          </select>
+          <button class="btn-sm" onclick="carregarDados()">↻ Atualizar</button>
+        </div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg>
+            Total do rebanho
+          </div>
+          <div class="metric-value" id="m-total"><div class="spin" style="display:inline-block;"></div></div>
+          <div class="metric-sub" id="m-total-sub">carregando...</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16m8-8H4"/></svg>
+            Nascimentos
+          </div>
+          <div class="metric-value up" id="m-nasc">—</div>
+          <div class="metric-sub" id="m-nasc-sub">bezerros + bezerras</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            Mortalidade
+          </div>
+          <div class="metric-value" id="m-mort">—</div>
+          <div class="metric-sub" id="m-mort-sub">limite: 5%</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>
+            Movimentações
+          </div>
+          <div class="metric-value" id="m-movs">—</div>
+          <div class="metric-sub" id="m-movs-sub">no período</div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Movimentações por tipo</span>
+            <span class="card-sub" id="chart-period">este mês</span>
+          </div>
+          <div style="position:relative; height:220px;">
+            <canvas id="chart-tipos" role="img" aria-label="Gráfico de movimentações por tipo"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Distribuição</span>
+            <span class="card-sub">M/F</span>
+          </div>
+          <div style="position:relative; height:180px;">
+            <canvas id="chart-mf" role="img" aria-label="Distribuição machos e fêmeas"></canvas>
+          </div>
+          <div id="legend-mf" style="display:flex;justify-content:center;gap:16px;margin-top:12px;font-size:11px;color:var(--subtle);"></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Lotes ativos</span>
+            <span class="card-sub" id="lotes-fazenda">—</span>
+          </div>
+          <div id="lotes-list"><div class="loading"><div class="spin"></div> carregando...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Alertas recentes</span>
+            <span class="card-sub" id="alertas-count">—</span>
+          </div>
+          <div id="alertas-list"><div class="loading"><div class="spin"></div> carregando...</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Movimentações section -->
+    <div id="section-movimentacoes" style="display:none;">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1>Movimentações</h1>
+          <p id="movs-sub">Carregando...</p>
+        </div>
+        <div class="topbar-right">
+          <select id="tipo-sel" onchange="carregarMovimentacoes()">
+            <option value="">Todos os tipos</option>
+            <option value="nascimento">Nascimentos</option>
+            <option value="morte">Mortes</option>
+            <option value="compra">Compras</option>
+            <option value="venda">Vendas</option>
+            <option value="troca">Trocas</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <table class="table" id="movs-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Fazenda</th>
+              <th>Tipo</th>
+              <th>Categoria</th>
+              <th>Lote</th>
+              <th style="text-align:right;">Qtd</th>
+            </tr>
+          </thead>
+          <tbody id="movs-body">
+            <tr><td colspan="6"><div class="loading"><div class="spin"></div> carregando...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Alertas section -->
+    <div id="section-alertas" style="display:none;">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1>Alertas</h1>
+          <p>Anomalias detectadas pelo agente de análise</p>
+        </div>
+      </div>
+      <div class="card">
+        <div id="alertas-full-list"><div class="loading"><div class="spin"></div> carregando...</div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://gboefoghltmientdqfkn.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdib2Vmb2dobHRtaWVudGRxZmtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNDE5OTEsImV4cCI6MjA5NjYxNzk5MX0.qXs6S3BaxFMYnEIkbqFe_0LJKX2b_0_VT4-2_7W_qY0'
+
+let fazendaAtual = 'Grupo Ricci'
+let chartTipos = null
+let chartMF = null
+
+async function sb(table, params = '') {
+  const r = await fetch(\`\${SUPABASE_URL}/rest/v1/\${table}\${params}\`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: \`Bearer \${SUPABASE_KEY}\` }
+  })
+  return r.json()
+}
+
+function fmt(n) { return (n ?? 0).toLocaleString('pt-BR') }
+function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('pt-BR') }
+
+function tipoColor(t) {
+  const c = { nascimento:'#1D9E75', morte:'#E24B4A', compra:'#378ADD', venda:'#D4537E', troca:'#7F77DD', mapa:'#888780' }
+  return c[t] || '#888780'
+}
+function tipoPill(t) {
+  const c = { nascimento:'pill-green', morte:'pill-red', compra:'pill-blue', venda:'pill-amber', troca:'pill-blue', mapa:'pill-gray' }
+  return c[t] || 'pill-gray'
+}
+function tipoLabel(t) {
+  const l = { nascimento:'Nascimento', morte:'Morte', compra:'Compra', venda:'Venda', troca:'Troca', mapa:'Mapa' }
+  return l[t] || t
+}
+
+async function carregarDados() {
+  const mesesAtras = parseInt(document.getElementById('mes-sel').value) || 0
+  const hoje = new Date()
+  const desde = new Date(hoje.getFullYear(), hoje.getMonth() - mesesAtras, 1)
+  const desdeStr = desde.toISOString().split('T')[0]
+
+  document.getElementById('page-sub').textContent = \`Última atualização: \${new Date().toLocaleTimeString('pt-BR')}\`
+
+  let query = \`?select=*&data_mov=gte.\${desdeStr}&order=data_mov.desc\`
+  if (fazendaAtual !== 'Grupo Ricci') query += \`&fazenda=eq.\${encodeURIComponent(fazendaAtual)}\`
+  const movs = await sb('movimentacoes_lote', query)
+
+  if (!Array.isArray(movs)) { console.error('Erro ao buscar movimentações:', movs); return }
+
+  // Métricas
+  const total = movs.reduce((s, m) => {
+    if (['nascimento','compra'].includes(m.tipo)) return s + (m.quantidade||0)
+    if (['morte','venda'].includes(m.tipo)) return s - (m.quantidade||0)
+    return s
+  }, 0)
+  const nasc  = movs.filter(m => m.tipo==='nascimento').reduce((s,m)=>s+(m.quantidade||0),0)
+  const mortes = movs.filter(m => m.tipo==='morte').reduce((s,m)=>s+(m.quantidade||0),0)
+  const entradas = movs.filter(m => ['nascimento','compra'].includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0)
+  const mort_pct = entradas > 0 ? ((mortes/entradas)*100).toFixed(1) : 0
+
+  document.getElementById('m-total').textContent = fmt(Math.max(0, total))
+  document.getElementById('m-total-sub').textContent = \`\${fmt(entradas)} entradas, \${fmt(movs.filter(m=>['morte','venda'].includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0))} saídas\`
+  document.getElementById('m-nasc').textContent = fmt(nasc)
+  document.getElementById('m-movs').textContent = fmt(movs.length)
+
+  const mortEl = document.getElementById('m-mort')
+  mortEl.textContent = mort_pct + '%'
+  mortEl.className = 'metric-value ' + (mort_pct > 5 ? 'down' : mort_pct > 2 ? 'warn' : 'up')
+  document.getElementById('m-mort-sub').textContent = mort_pct > 5 ? '⚠ acima do limite' : mort_pct > 2 ? 'atenção recomendada' : 'dentro do normal'
+
+  // Gráfico por tipo
+  const tipos = ['nascimento','compra','venda','morte','troca']
+  const tipoData = tipos.map(t => movs.filter(m=>m.tipo===t).reduce((s,m)=>s+(m.quantidade||0),0))
+  const cores = tipos.map(tipoColor)
+  const labels = tipos.map(t => tipoLabel(t))
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches
+  const textColor = isDark ? '#B4B2A9' : '#5F5E5A'
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'
+
+  if (chartTipos) chartTipos.destroy()
+  chartTipos = new Chart(document.getElementById('chart-tipos'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: tipoData, backgroundColor: cores, borderRadius: 5, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 11 } } },
+        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 }, callback: v => Math.round(v) } }
+      }
+    }
+  })
+
+  // Gráfico M/F
+  const machos  = movs.filter(m => m.categoria && m.categoria.startsWith('1.')).reduce((s,m)=>s+(m.quantidade||0),0)
+  const femeas  = movs.filter(m => m.categoria && m.categoria.startsWith('2.')).reduce((s,m)=>s+(m.quantidade||0),0)
+  const mfTotal = machos + femeas || 1
+  if (chartMF) chartMF.destroy()
+  chartMF = new Chart(document.getElementById('chart-mf'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Machos','Fêmeas'],
+      datasets: [{ data: [machos, femeas], backgroundColor: ['#378ADD','#D4537E'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '72%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => \` \${ctx.label}: \${fmt(ctx.raw)}\` } } }
+    }
+  })
+  document.getElementById('legend-mf').innerHTML = \`
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:#378ADD;display:inline-block;"></span>Machos \${((machos/mfTotal)*100).toFixed(0)}%</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:#D4537E;display:inline-block;"></span>Fêmeas \${((femeas/mfTotal)*100).toFixed(0)}%</span>
+  \`
+
+  // Lotes
+  await carregarLotes()
+  await carregarAlertas()
+}
+
+async function carregarLotes() {
+  const el = document.getElementById('lotes-list')
+  let q = \`?select=id,nome,finalidade,fazenda_id,fazendas(nome)&ativo=eq.true&order=nome\`
+  if (fazendaAtual !== 'Grupo Ricci') {
+    const fazs = await sb('fazendas', \`?nome=eq.\${encodeURIComponent(fazendaAtual)}&select=id\`)
+    if (fazs?.[0]?.id) q += \`&fazenda_id=eq.\${fazs[0].id}\`
+  }
+  const lotes = await sb('lotes', q)
+  document.getElementById('lotes-fazenda').textContent = fazendaAtual === 'Grupo Ricci' ? 'todas as fazendas' : fazendaAtual
+
+  if (!lotes?.length) { el.innerHTML = '<div class="empty">Nenhum lote encontrado</div>'; return }
+
+  const colors = ['#1D9E75','#378ADD','#7F77DD','#D4537E','#EF9F27','#E24B4A','#1D9E75']
+  const finalidades = { cria:'Cria', recria:'Recria', engorda:'Engorda', reproducao:'Reprodução', descarte:'Descarte', geral:'Geral' }
+  const maxLotes = Math.min(lotes.length, 100)
+  const movLotes = await sb('movimentacoes_lote', \`?select=lote_id,quantidade,tipo&lote_id=in.(\${lotes.slice(0,maxLotes).map(l=>l.id).join(',')})\`)
+
+  const totalGlobal = lotes.reduce((s, l) => {
+    const movs = movLotes?.filter?.(m => m.lote_id === l.id) || []
+    const ent = movs.filter(m => ['nascimento','compra'].includes(m.tipo)).reduce((a,m)=>a+(m.quantidade||0),0)
+    const sai = movs.filter(m => ['morte','venda'].includes(m.tipo)).reduce((a,m)=>a+(m.quantidade||0),0)
+    return s + Math.max(0, ent - sai)
+  }, 0) || 1
+
+  el.innerHTML = lotes.slice(0, 6).map((l, i) => {
+    const movs = movLotes?.filter?.(m => m.lote_id === l.id) || []
+    const ent = movs.filter(m => ['nascimento','compra'].includes(m.tipo)).reduce((a,m)=>a+(m.quantidade||0),0)
+    const sai = movs.filter(m => ['morte','venda'].includes(m.tipo)).reduce((a,m)=>a+(m.quantidade||0),0)
+    const total = Math.max(0, ent - sai)
+    const pct = Math.round((total / totalGlobal) * 100)
+    const color = colors[i % colors.length]
+    const fn = l.fazendas?.nome || ''
+    return \`
+      <div class="lote-row">
+        <div class="lote-left">
+          <div class="lote-dot" style="background:\${color};"></div>
+          <div>
+            <div class="lote-name">\${l.nome}</div>
+            <div class="lote-meta">\${finalidades[l.finalidade] || l.finalidade || '—'}\${fn && fazendaAtual === 'Grupo Ricci' ? ' · ' + fn : ''}</div>
+          </div>
+        </div>
+        <div class="lote-right">
+          <div class="lote-count">\${fmt(total)}</div>
+          <div class="lote-trend" style="color:var(--subtle)">\${pct}% do total</div>
+          <div class="bar-wrap" style="width:60px;">
+            <div class="bar-track"><div class="bar-fill" style="width:\${pct}%;background:\${color};"></div></div>
+          </div>
+        </div>
+      </div>\`
+  }).join('')
+}
+
+async function carregarAlertas() {
+  const alertas = await sb('bot_anomalias', '?select=*&order=detectado_em.desc&limit=5')
+  const el = document.getElementById('alertas-list')
+  const count = alertas?.length || 0
+  document.getElementById('alertas-count').textContent = \`\${count} recente\${count !== 1 ? 's' : ''}\`
+  if (count > 0) document.getElementById('alerta-dot').style.display = 'inline-block'
+
+  if (!count) {
+    el.innerHTML = '<div class="empty">Nenhum alerta registrado<br><span style="font-size:11px;color:var(--subtle)">O agente analisa a cada 6 horas</span></div>'
+    return
+  }
+
+  const iconMap = { alerta:'w', info:'i', aviso:'i', critico:'d' }
+  const icons = { w:'⚠', i:'ℹ', d:'⛔', s:'✓' }
+  el.innerHTML = alertas.map(a => {
+    const cls = iconMap[a.tipo?.split('_')[0]] || 'i'
+    return \`
+      <div class="alerta-row">
+        <div class="alerta-icon \${cls}">\${icons[cls]}</div>
+        <div class="alerta-body">
+          <div class="alerta-text">\${a.descricao || a.tipo}</div>
+          <div class="alerta-meta">\${a.fazenda} · \${fmtDate(a.detectado_em)}</div>
+        </div>
+      </div>\`
+  }).join('')
+
+  // Também preencher section de alertas
+  document.getElementById('alertas-full-list').innerHTML = alertas.map(a => {
+    const cls = iconMap[a.tipo?.split('_')[0]] || 'i'
+    return \`
+      <div class="alerta-row" style="padding:14px 0;">
+        <div class="alerta-icon \${cls}" style="width:36px;height:36px;font-size:16px;">\${icons[cls]}</div>
+        <div class="alerta-body">
+          <div class="alerta-text" style="font-size:13px;">\${a.descricao || a.tipo}</div>
+          <div class="alerta-meta" style="margin-top:4px;">\${a.fazenda} · \${fmtDate(a.detectado_em)} · \${a.resolvido ? '<span style="color:var(--green)">Resolvido</span>' : '<span style="color:var(--amber)">Em aberto</span>'}</div>
+        </div>
+      </div>\`
+  }).join('')
+}
+
+async function carregarMovimentacoes() {
+  const tipo = document.getElementById('tipo-sel').value
+  let q = \`?select=*,lotes(nome)&order=data_mov.desc&limit=50\`
+  if (fazendaAtual !== 'Grupo Ricci') q += \`&fazenda=eq.\${encodeURIComponent(fazendaAtual)}\`
+  if (tipo) q += \`&tipo=eq.\${tipo}\`
+  const movs = await sb('movimentacoes_lote', q)
+  document.getElementById('movs-sub').textContent = \`\${movs?.length || 0} registros\`
+
+  if (!movs?.length) {
+    document.getElementById('movs-body').innerHTML = '<tr><td colspan="6"><div class="empty">Nenhuma movimentação encontrada</div></td></tr>'
+    return
+  }
+  document.getElementById('movs-body').innerHTML = movs.map(m => \`
+    <tr>
+      <td>\${fmtDate(m.data_mov)}</td>
+      <td>\${m.fazenda || '—'}</td>
+      <td><span class="pill \${tipoPill(m.tipo)}">\${tipoLabel(m.tipo)}</span></td>
+      <td>\${m.categoria || '—'}</td>
+      <td>\${m.lotes?.nome || m.lote_nome || '—'}</td>
+      <td style="text-align:right; font-weight:500;">\${fmt(m.quantidade)}</td>
+    </tr>\`).join('')
+}
+
+function setFazenda(f) {
+  fazendaAtual = f
+  document.getElementById('page-title').textContent = f === 'Grupo Ricci' ? 'Todas as fazendas' : f
+  carregarDados()
+  if (document.getElementById('section-movimentacoes').style.display !== 'none') carregarMovimentacoes()
+}
+
+function highlightNav(btn) {
+  document.querySelectorAll('.nav-item').forEach(b => {
+    if (b.textContent.trim().startsWith('Todas') || b.textContent.trim().startsWith('Fazenda') || b.textContent.trim() === b.textContent.trim()) {
+      b.classList.remove('active')
+    }
+  })
+  btn.classList.add('active')
+}
+
+function showSection(name) {
+  ['dashboard','movimentacoes','alertas'].forEach(s => {
+    document.getElementById('section-' + s).style.display = s === name ? '' : 'none'
+  })
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'))
+  event.target.closest('.nav-item').classList.add('active')
+  if (name === 'movimentacoes') carregarMovimentacoes()
+  if (name === 'alertas') carregarAlertas()
+}
+
+carregarDados()
+</script>
+</body>
+</html>
+`
+app.get('/dashboard', (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8')
+  res.send(DASHBOARD_HTML)
 })
 
 const PORT = process.env.PORT || 3000
