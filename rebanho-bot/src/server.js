@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781719391
+// v1781720589
 
 const express = require('express')
 const twilio = require('twilio')
@@ -56,10 +56,14 @@ app.use(express.urlencoded({ extended: false }))
 app.use(express.json())
 app.use(express.static(path.join(__dirname)))
 
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-)
+let _twilioClient = null
+function getTwilioClient() {
+  if (!_twilioClient) _twilioClient = twilio(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  )
+  return _twilioClient
+}
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -1429,7 +1433,7 @@ async function finalizarSalvamento(de, dados) {
 
 async function enviarMensagem(para, mensagem) {
   try {
-    return await twilioClient.messages.create({
+    return await getTwilioClient().messages.create({
       from: process.env.TWILIO_WHATSAPP_NUMBER,
       to: para,
       body: mensagem,
@@ -1465,7 +1469,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781719391', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781720589', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
