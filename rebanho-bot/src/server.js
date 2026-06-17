@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781721200
+// v1781721325
 
 const express = require('express')
 const twilio = require('twilio')
@@ -126,9 +126,7 @@ async function perguntarLoteTipo(de, dados) {
     const fazendaObj = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
     if (fazendaObj) {
       // Buscar subdivisões da fazenda
-      const { data: subs } = await require('./supabase').createClient(
-        process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY
-      ).from('subdivisoes').select('nome,tipo').eq('fazenda_id', fazendaObj.id).eq('ativo', true).order('nome')
+      const { data: subs } = await getSupabase().from('subdivisoes').select('nome,tipo').eq('fazenda_id', fazendaObj.id).eq('ativo', true).order('nome')
       if (subs?.length) {
         msgSubs = '\n\nSubdivisões: ' + subs.map(s => s.nome).join(', ')
       }
@@ -1477,7 +1475,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781721200', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781721325', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
