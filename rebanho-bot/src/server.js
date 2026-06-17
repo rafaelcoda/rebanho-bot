@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781737695
+// v1781738058
 
 const express = require('express')
 const twilio = require('twilio')
@@ -862,17 +862,8 @@ app.post('/webhook/whatsapp', validarTwilio, async (req, res) => {
       return
     }
 
-    // Menu com botões interativos
-  const nomeMsg = usuario.nome ? ', ' + usuario.nome.split(' ')[0] : ''
-  enviarBotoes(de,
-    `Olá${nomeMsg}! 👋 O que deseja registrar hoje?`,
-    [
-      { id: 'entradas', title: 'Entradas (nasc/compra)' },
-      { id: 'saidas', title: 'Saídas (morte/venda)' },
-      { id: 'outros', title: 'Ver mais opções' }
-    ]
-  ).catch(() => {})
-  responderWhatsApp(res, '_Abrindo menu..._')
+    responderWhatsApp(res,
+    `*Olá${usuario.nome ? ', ' + usuario.nome.split(' ')[0] : ''}! Sou o assistente de rebanho do Grupo Ricci.* 🐄\n\nEnvie um *áudio* com os dados do mapa de rebanho.\n\nComandos:\n- *resumo* — últimos 3 meses\n- *lotes* — resumo por lote\n- *cancelar* — cancela operação em andamento`)
   } catch (err) {
     console.error('Erro webhook:', err.message)
     console.error('Stack:', err.stack?.split('\n').slice(0,3).join(' | '))
@@ -1606,7 +1597,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781737695', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781738058', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
