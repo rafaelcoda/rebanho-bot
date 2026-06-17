@@ -372,15 +372,15 @@ function fmt(n) { return (n ?? 0).toLocaleString('pt-BR') }
 function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('pt-BR') }
 
 function tipoColor(t) {
-  const c = { nascimento:'#1D9E75', morte:'#E24B4A', compra:'#378ADD', venda:'#D4537E', troca:'#7F77DD', mapa:'#888780' }
+  const c = { nascimento:'#1D9E75', morte:'#E24B4A', compra:'#378ADD', venda:'#D4537E', troca:'#7F77DD', mapa:'#888780', abate:'#A32D2D', desmama:'#888780', mudanca_categoria:'#7F77DD' }
   return c[t] || '#888780'
 }
 function tipoPill(t) {
-  const c = { nascimento:'pill-green', morte:'pill-red', compra:'pill-blue', venda:'pill-amber', troca:'pill-blue', mapa:'pill-gray' }
+  const c = { nascimento:'pill-green', morte:'pill-red', compra:'pill-blue', venda:'pill-amber', troca:'pill-blue', mapa:'pill-gray', abate:'pill-red', desmama:'pill-gray', mudanca_categoria:'pill-gray' }
   return c[t] || 'pill-gray'
 }
 function tipoLabel(t) {
-  const l = { nascimento:'Nascimento', morte:'Morte', compra:'Compra', venda:'Venda', troca:'Troca', mapa:'Mapa' }
+  const l = { nascimento:'Nascimento', morte:'Morte', compra:'Compra', venda:'Venda', troca:'Troca', mapa:'Mapa', abate:'Abate', desmama:'Desmama', mudanca_categoria:'Mudança cat.' }
   return l[t] || t
 }
 
@@ -397,18 +397,20 @@ async function carregarDados() {
   if (!Array.isArray(movs)) { console.error('Erro ao buscar movimentações:', movs); return }
 
   // Métricas
+  const ENTRADAS = ['nascimento','compra','desmama','mudanca_categoria']
+  const SAIDAS   = ['morte','venda','abate','desmama']
   const total = movs.reduce((s, m) => {
-    if (['nascimento','compra'].includes(m.tipo)) return s + (m.quantidade||0)
-    if (['morte','venda'].includes(m.tipo)) return s - (m.quantidade||0)
+    if (ENTRADAS.includes(m.tipo) && !SAIDAS.includes(m.tipo)) return s + (m.quantidade||0)
+    if (SAIDAS.includes(m.tipo) && !ENTRADAS.includes(m.tipo)) return s - (m.quantidade||0)
     return s
   }, 0)
-  const nasc  = movs.filter(m => m.tipo==='nascimento').reduce((s,m)=>s+(m.quantidade||0),0)
-  const mortes = movs.filter(m => m.tipo==='morte').reduce((s,m)=>s+(m.quantidade||0),0)
-  const entradas = movs.filter(m => ['nascimento','compra'].includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0)
+  const nasc   = movs.filter(m => m.tipo==='nascimento').reduce((s,m)=>s+(m.quantidade||0),0)
+  const mortes = movs.filter(m => ['morte','abate'].includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0)
+  const entradas = movs.filter(m => ENTRADAS.includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0)
   const mort_pct = entradas > 0 ? ((mortes/entradas)*100).toFixed(1) : 0
 
   document.getElementById('m-total').textContent = fmt(Math.max(0, total))
-  document.getElementById('m-total-sub').textContent = `${fmt(entradas)} entradas, ${fmt(movs.filter(m=>['morte','venda'].includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0))} saídas`
+  document.getElementById('m-total-sub').textContent = `${fmt(entradas)} entradas, ${fmt(movs.filter(m=>SAIDAS.includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0))} saídas`
   document.getElementById('m-nasc').textContent = fmt(nasc)
   document.getElementById('m-movs').textContent = fmt(movs.length)
 
@@ -418,7 +420,7 @@ async function carregarDados() {
   document.getElementById('m-mort-sub').textContent = mort_pct > 5 ? '⚠ acima do limite' : mort_pct > 2 ? 'atenção recomendada' : 'dentro do normal'
 
   // Gráfico por tipo
-  const tipos = ['nascimento','compra','venda','morte','troca']
+  const tipos = ['nascimento','compra','desmama','venda','morte','abate']
   const tipoData = tipos.map(t => movs.filter(m=>m.tipo===t).reduce((s,m)=>s+(m.quantidade||0),0))
   const cores = tipos.map(tipoColor)
   const labels = tipos.map(t => tipoLabel(t))
