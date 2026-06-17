@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781721325
+// v1781722066
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1475,7 +1475,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781721325', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781722066', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1689,6 +1689,14 @@ app.get('/api/dashboard/lotes', async (req, res) => {
     const { data, error } = await q
     if (error) return res.status(500).json({ error: error.message })
     res.json(data)
+  } catch(e) { res.status(500).json({ error: e.message }) }
+})
+
+app.get('/api/dashboard/fazendas', async (req, res) => {
+  try {
+    const { data, error } = await getSupabase().from('fazendas').select('id,nome,tipo,nome_normalizado').eq('ativo', true).order('nome')
+    if (error) return res.status(500).json({ error: error.message })
+    res.json(data || [])
   } catch(e) { res.status(500).json({ error: e.message }) }
 })
 
