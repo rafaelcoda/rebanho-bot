@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781739687
+// v1781740627
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1616,7 +1616,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781739687', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781740627', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1809,7 +1809,7 @@ app.get('/api/dashboard/movimentacoes', async (req, res) => {
   try {
     const { fazenda, desde, tipo } = req.query
     console.log('[Dashboard] movimentacoes:', { fazenda, desde, tipo })
-    let q = getSbDash().from('movimentacoes_lote').select('id,fazenda,tipo,categoria,quantidade,data_mov,lote_id').order('data_mov', { ascending: false }).limit(200)
+    let q = getSbDash().from('movimentacoes_lote').select('id,fazenda,tipo,categoria,quantidade,data_mov,lote_id,whatsapp_de').order('data_mov', { ascending: false }).limit(200)
     if (desde) q = q.gte('data_mov', desde)
     if (fazenda && fazenda !== 'Grupo Ricci') q = q.eq('fazenda', fazenda)
     if (tipo) q = q.eq('tipo', tipo)
