@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781658883
+// v1781659269
 
 const express = require('express')
 const twilio = require('twilio')
@@ -127,31 +127,64 @@ async function perguntarLoteTipo(de, dados) {
   )
 }
 
-// ─── Extrair lote e tipo de animal de texto livre ────────────────────────────
-async function extrairLoteTipo(texto) {
-  const t = texto.toLowerCase()
+// ─── Extrair lote e tipo de animal via GPT ──────────────────────────────────
+async function extrairLoteTipo(texto, lotesDisponiveis) {
+  const t = (texto || '').toLowerCase().trim()
 
   // Verificar se quer pular
-  if (t.includes('pular') || t.includes('skip') || t.includes('não sei') || t.includes('nao sei')) {
+  if (t.includes('pular') || t.includes('skip') || t.includes('não sei') || t.includes('nao sei') || t.length < 2) {
     return { lote: null, tipo_animal: null }
   }
 
-  // Tipos de animal conhecidos
-  const tipos = ['nelore', 'angus', 'cruzado', 'girolando', 'outros']
-  let tipo_animal = null
-  for (const tipo of tipos) {
-    if (t.includes(tipo)) { tipo_animal = tipo.charAt(0).toUpperCase() + tipo.slice(1); break }
-  }
+  try {
+    const axios = require('axios')
 
-  // Extrair lote — buscar padrão "lote X" ou "retiro X"
-  let lote = null
-  const matchLote = t.match(/lote\s+(\w+(?:\s+\w+)?)/i) || t.match(/retiro\s+(\w+(?:\s+\w+)?)/i)
-  if (matchLote) {
-    lote = matchLote[0].trim()
-    lote = lote.charAt(0).toUpperCase() + lote.slice(1)
-  }
+    const lotesStr = lotesDisponiveis?.length
+      ? 'Lotes disponíveis: ' + lotesDisponiveis.map(l => l.nome).join(', ')
+      : 'Lotes: Lote Cria, Lote Recria, Lote Engorda, Lote Reprodução'
 
-  return { lote, tipo_animal }
+    const prompt = `Extraia o lote e o tipo de animal do texto a seguir.
+${lotesStr}
+Tipos de animal válidos: Nelore, Angus, Cruzado, Girolando, Outros
+
+Texto (pode conter erros de transcrição de áudio): "${texto}"
+
+Retorne APENAS JSON válido, sem markdown:
+{"lote": "nome exato do lote ou null", "tipo_animal": "tipo exato ou null"}
+
+Exemplos:
+- "lote engorda nelore" → {"lote": "Lote Engorda", "tipo_animal": "Nelore"}
+- "recria, gado cruzado" → {"lote": "Lote Recria", "tipo_animal": "Cruzado"}
+- "não sei" → {"lote": null, "tipo_animal": null}
+- "engorda" → {"lote": "Lote Engorda", "tipo_animal": null}`
+
+    const resp = await axios.post(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        model: 'gpt-4o-mini',
+        max_tokens: 100,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }]
+      },
+      { headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` }, timeout: 8000 }
+    )
+
+    const raw = resp.data.choices[0].message.content.trim()
+    const clean = raw.replace(/```json|```/g, '').trim()
+    const result = JSON.parse(clean)
+    console.log(`[extrairLoteTipo] "${texto}" → lote:${result.lote} tipo:${result.tipo_animal}`)
+    return { lote: result.lote || null, tipo_animal: result.tipo_animal || null }
+  } catch (err) {
+    console.log('[extrairLoteTipo] Erro GPT:', err.message, '— usando fallback regex')
+    // Fallback: regex simples
+    const tipos = ['nelore', 'angus', 'cruzado', 'girolando']
+    const tipo_animal = tipos.find(tp => t.includes(tp))
+    const matchLote = t.match(/lote\s+\w+/i) || t.match(/retiro\s+\w+/i)
+    return {
+      lote: matchLote ? matchLote[0].replace(/^\w/, c => c.toUpperCase()) : null,
+      tipo_animal: tipo_animal ? tipo_animal.charAt(0).toUpperCase() + tipo_animal.slice(1) : null
+    }
+  }
 }
 
 // ─── Fluxo guiado: processar cada etapa ──────────────────────────────────────
@@ -238,8 +271,13 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
   // ── Etapa: lote e tipo de animal ──────────────────────────
   if (etapa === 'lote_tipo') {
     try {
-      // Extrair lote e tipo de animal do texto
-      const extraido = await extrairLoteTipo(resposta)
+      // Extrair lote e tipo de animal do texto via GPT
+      let lotesDisp = []
+      try {
+        const faz = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
+        if (faz) lotesDisp = await dbFazendas.listarLotes(faz.id)
+      } catch(e) {}
+      const extraido = await extrairLoteTipo(resposta, lotesDisp)
       const novosDados = Object.assign({}, dados, {
         lote_nome: extraido.lote || dados.lote_nome || null,
         tipo_animal: extraido.tipo_animal || dados.tipo_animal || null,
@@ -1399,7 +1437,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781658883', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781659269', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
