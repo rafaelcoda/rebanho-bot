@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781739343
+// v1781739369
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1622,7 +1622,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781739343', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781739369', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -3162,7 +3162,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781739343', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781739369', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
