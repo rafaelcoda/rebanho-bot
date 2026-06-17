@@ -1,7 +1,5 @@
-// ============================================================
 // db_fazendas.js — Funções para resolver nomes → UUIDs
-// Busca fazendas, pastos, lotes e tipos de animal por nome
-// ============================================================
+// Hierarquia: Fazenda > Subdivisão (Pasto/Confinamento/Piquete) > Lote
 
 const { createClient } = require('@supabase/supabase-js')
 const ws = require('ws')
@@ -16,7 +14,6 @@ function getSb() {
   return _sb
 }
 
-// Normalizar texto para matching (lowercase, sem acento)
 function normalizar(texto) {
   if (!texto) return ''
   return texto.toLowerCase()
@@ -24,67 +21,76 @@ function normalizar(texto) {
     .trim()
 }
 
-// ─── Buscar fazenda por nome (texto livre → {id, nome}) ───────
+// ─── Fazenda ──────────────────────────────────────────────────
 async function resolverFazenda(nomeBruto) {
   if (!nomeBruto) return null
   const sb = getSb()
   const norm = normalizar(nomeBruto)
 
-  // Busca exata primeiro
   const { data: exata } = await sb
     .from('fazendas')
     .select('id, nome, nome_normalizado')
     .eq('nome_normalizado', norm)
     .eq('ativo', true)
     .single()
-
   if (exata) return exata
 
-  // Busca parcial
   const { data: todas } = await sb
     .from('fazendas')
     .select('id, nome, nome_normalizado')
     .eq('ativo', true)
-
   if (!todas?.length) return null
 
-  // Verificar se o nome buscado contém ou está contido no nome da fazenda
-  const match = todas.find(f =>
-    f.nome_normalizado.includes(norm) ||
-    norm.includes(f.nome_normalizado)
-  )
-
-  return match || null
+  return todas.find(f =>
+    f.nome_normalizado.includes(norm) || norm.includes(f.nome_normalizado)
+  ) || null
 }
 
-// ─── Buscar lote por nome dentro de uma fazenda ───────────────
+// ─── Subdivisão (Pasto/Confinamento/Piquete) ──────────────────
+async function resolverSubdivisao(nomeBruto, fazendaId) {
+  if (!nomeBruto || !fazendaId) return null
+  const sb = getSb()
+  const norm = normalizar(nomeBruto)
+
+  const { data: subs } = await sb
+    .from('subdivisoes')
+    .select('id, nome, tipo, numero')
+    .eq('fazenda_id', fazendaId)
+    .eq('ativo', true)
+  if (!subs?.length) return null
+
+  const exato = subs.find(s => normalizar(s.nome) === norm)
+  if (exato) return exato
+
+  return subs.find(s =>
+    normalizar(s.nome).includes(norm) ||
+    norm.includes(normalizar(s.nome)) ||
+    (s.tipo && norm.includes(s.tipo))
+  ) || null
+}
+
+// ─── Lote ─────────────────────────────────────────────────────
 async function resolverLote(nomeBruto, fazendaId) {
-  if (!nomeBruto) return null
+  if (!nomeBruto || !fazendaId) return null
   const sb = getSb()
   const norm = normalizar(nomeBruto)
 
   const { data: lotes } = await sb
     .from('lotes')
-    .select('id, nome, finalidade')
+    .select('id, nome, finalidade, numero')
     .eq('fazenda_id', fazendaId)
     .eq('ativo', true)
-
   if (!lotes?.length) return null
 
-  // Busca exata
   const exato = lotes.find(l => normalizar(l.nome) === norm)
   if (exato) return exato
 
-  // Busca parcial
-  const parcial = lotes.find(l =>
-    normalizar(l.nome).includes(norm) ||
-    norm.includes(normalizar(l.nome))
-  )
-
-  return parcial || null
+  return lotes.find(l =>
+    normalizar(l.nome).includes(norm) || norm.includes(normalizar(l.nome))
+  ) || null
 }
 
-// ─── Buscar tipo de animal por nome ───────────────────────────
+// ─── Tipo de animal ───────────────────────────────────────────
 async function resolverTipoAnimal(nomeBruto) {
   if (!nomeBruto) return null
   const sb = getSb()
@@ -94,46 +100,35 @@ async function resolverTipoAnimal(nomeBruto) {
     .from('tipos_animal')
     .select('id, nome')
     .eq('ativo', true)
-
   if (!tipos?.length) return null
 
   const exato = tipos.find(t => normalizar(t.nome) === norm)
   if (exato) return exato
 
-  const parcial = tipos.find(t =>
-    normalizar(t.nome).includes(norm) ||
-    norm.includes(normalizar(t.nome))
-  )
-
-  // Se não encontrou nada, retorna "Outros"
-  return parcial || tipos.find(t => normalizar(t.nome) === 'outros') || null
+  return tipos.find(t =>
+    normalizar(t.nome).includes(norm) || norm.includes(normalizar(t.nome))
+  ) || tipos.find(t => normalizar(t.nome) === 'outros') || null
 }
 
-// ─── Listar lotes de uma fazenda (para o bot mostrar opções) ──
-async function listarLotes(fazendaId) {
-  const sb = getSb()
-  const { data } = await sb
-    .from('lotes')
-    .select('id, nome, finalidade')
-    .eq('fazenda_id', fazendaId)
-    .eq('ativo', true)
-    .order('nome')
-  return data || []
-}
-
-// ─── Listar fazendas ativas ───────────────────────────────────
+// ─── Listar para menus ────────────────────────────────────────
 async function listarFazendas() {
-  const sb = getSb()
-  const { data } = await sb
-    .from('fazendas')
-    .select('id, nome')
-    .eq('ativo', true)
-    .order('nome')
+  const { data } = await getSb().from('fazendas').select('id, nome').eq('ativo', true).order('nome')
   return data || []
 }
 
-// ─── Resolver contexto completo de um registro ────────────────
-// Recebe texto bruto e retorna {fazenda_id, lote_id, tipo_id, fazenda_nome, lote_nome, tipo_nome}
+async function listarSubdivisoes(fazendaId) {
+  const { data } = await getSb().from('subdivisoes').select('id, nome, tipo, numero, area_ha')
+    .eq('fazenda_id', fazendaId).eq('ativo', true).order('nome')
+  return data || []
+}
+
+async function listarLotes(fazendaId) {
+  const { data } = await getSb().from('lotes').select('id, nome, finalidade, numero')
+    .eq('fazenda_id', fazendaId).eq('ativo', true).order('nome')
+  return data || []
+}
+
+// ─── Resolver contexto completo ───────────────────────────────
 async function resolverContexto(fazendaNome, subdivisaoNome, loteNome, tipoNome) {
   const resultado = {
     fazenda_id: null, fazenda_nome: null,
@@ -142,7 +137,6 @@ async function resolverContexto(fazendaNome, subdivisaoNome, loteNome, tipoNome)
     tipo_id: null, tipo_nome: null
   }
 
-  // Resolver fazenda
   if (fazendaNome) {
     const fazenda = await resolverFazenda(fazendaNome)
     if (fazenda) {
@@ -151,7 +145,6 @@ async function resolverContexto(fazendaNome, subdivisaoNome, loteNome, tipoNome)
     }
   }
 
-  // Resolver subdivisão (precisa da fazenda)
   if (subdivisaoNome && resultado.fazenda_id) {
     const sub = await resolverSubdivisao(subdivisaoNome, resultado.fazenda_id)
     if (sub) {
@@ -160,7 +153,6 @@ async function resolverContexto(fazendaNome, subdivisaoNome, loteNome, tipoNome)
     }
   }
 
-  // Resolver lote (precisa da fazenda)
   if (loteNome && resultado.fazenda_id) {
     const lote = await resolverLote(loteNome, resultado.fazenda_id)
     if (lote) {
@@ -169,7 +161,6 @@ async function resolverContexto(fazendaNome, subdivisaoNome, loteNome, tipoNome)
     }
   }
 
-  // Resolver tipo de animal
   if (tipoNome) {
     const tipo = await resolverTipoAnimal(tipoNome)
     if (tipo) {
@@ -187,8 +178,8 @@ module.exports = {
   resolverLote,
   resolverTipoAnimal,
   resolverContexto,
-  listarLotes,
-  listarSubdivisoes,
   listarFazendas,
+  listarSubdivisoes,
+  listarLotes,
   normalizar
 }
