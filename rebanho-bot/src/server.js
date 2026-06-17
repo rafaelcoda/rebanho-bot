@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781723077
+// v1781723368
 
 const express = require('express')
 const twilio = require('twilio')
@@ -474,10 +474,15 @@ async function salvarFluxoGuiado(de, dados) {
       const movCompleto = Object.assign({}, mov, {
         tipo: dados.tipo_interno,
         fazenda: dados.fazenda || 'Grupo Ricci',
+        subdivisao_nome: dados.subdivisao_nome || null,
+        lote_nome: dados.lote_nome || null,
+        tipo_animal: dados.tipo_animal || null,
         dia: mov.dia || dados.dia,
         mes: mov.mes || dados.mes,
         ano: mov.ano || dados.ano,
         peso: dados.peso_total_kg || mov.peso || null,
+        peso_total_kg: dados.peso_total_kg || null,
+        peso_medio_kg: dados.peso_medio_kg || null,
       })
       await salvarEResponderMovimentacao(de, movCompleto)
     }
@@ -1373,20 +1378,24 @@ async function salvarEResponderMovimentacao(de, mov) {
     }
     // Resolver IDs das novas tabelas
     const ctx = await dbFazendas.resolverContexto(
-      dados.fazenda,
-      dados.loteNome || null,
-      dados.tipoAnimal || null
+      mov.fazenda || null,
+      mov.subdivisao_nome || null,
+      mov.lote_nome || null,
+      mov.tipo_animal || null
     ).catch(() => ({}))
 
     await supabase.from('movimentacoes_lote').insert({
-      fazenda:          mov.fazenda || dados.fazenda || 'Grupo Ricci',
+      fazenda:          mov.fazenda || 'Grupo Ricci',
       fazenda_id:       ctx.fazenda_id || null,
+      subdivisao_id:    ctx.subdivisao_id || null,
       lote_id:          ctx.lote_id || null,
       tipo_animal_id:   ctx.tipo_id || null,
       tipo,
       data_mov:       dataIso || new Date().toISOString().substring(0, 10),
       quantidade:     mov.quantidade || 1,
       peso:           mov.peso || null,
+      peso_total_kg:  mov.peso_total_kg || null,
+      peso_medio_kg:  mov.peso_medio_kg || null,
       valor:          mov.valor || null,
       categoria:      mov.categoria || null,
       categoria_item: mov.categoria_item || null,
@@ -1475,7 +1484,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781723077', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781723368', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
