@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781712687
+// v1781712811
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1437,7 +1437,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781712687', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781712811', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -2139,7 +2139,7 @@ async function carregarLotes() {
 
   const colors = ['#1D9E75','#378ADD','#7F77DD','#D4537E','#EF9F27','#E24B4A','#1D9E75']
   const finalidades = { cria:'Cria', recria:'Recria', engorda:'Engorda', reproducao:'Reprodução', descarte:'Descarte', geral:'Geral' }
-  const movLotes = await api('movimentacoes', { fazenda: fazendaAtual)
+  const movLotes = await api('movimentacoes', { fazenda: fazendaAtual })
 
   const totalGlobal = lotes.reduce((s, l) => {
     const movs = movLotes?.filter?.(m => m.lote_id === l.id) || []
