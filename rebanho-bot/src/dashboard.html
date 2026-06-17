@@ -397,20 +397,24 @@ async function carregarDados() {
   if (!Array.isArray(movs)) { console.error('Erro ao buscar movimentações:', movs); return }
 
   // Métricas
-  const ENTRADAS = ['nascimento','compra','desmama','mudanca_categoria']
-  const SAIDAS   = ['morte','venda','abate','desmama']
+  // Entradas reais (aumentam o rebanho)
+  const ENTRADAS_REAIS = ['nascimento','compra']
+  // Saidas reais (diminuem o rebanho)
+  const SAIDAS_REAIS   = ['morte','abate','venda']
+  // Neutros (transferencia interna — entrada em um lote, saida em outro)
+  const NEUTROS        = ['desmama','mudanca_categoria','transferencia','troca']
   const total = movs.reduce((s, m) => {
-    if (ENTRADAS.includes(m.tipo) && !SAIDAS.includes(m.tipo)) return s + (m.quantidade||0)
-    if (SAIDAS.includes(m.tipo) && !ENTRADAS.includes(m.tipo)) return s - (m.quantidade||0)
+    if (ENTRADAS_REAIS.includes(m.tipo)) return s + (m.quantidade||0)
+    if (SAIDAS_REAIS.includes(m.tipo))   return s - (m.quantidade||0)
     return s
   }, 0)
   const nasc   = movs.filter(m => m.tipo==='nascimento').reduce((s,m)=>s+(m.quantidade||0),0)
   const mortes = movs.filter(m => ['morte','abate'].includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0)
-  const entradas = movs.filter(m => ENTRADAS.includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0)
+  const entradas = movs.filter(m => ENTRADAS_REAIS.includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0)
   const mort_pct = entradas > 0 ? ((mortes/entradas)*100).toFixed(1) : 0
 
   document.getElementById('m-total').textContent = fmt(Math.max(0, total))
-  document.getElementById('m-total-sub').textContent = `${fmt(entradas)} entradas, ${fmt(movs.filter(m=>SAIDAS.includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0))} saídas`
+  document.getElementById('m-total-sub').textContent = `${fmt(entradas)} entradas, ${fmt(movs.filter(m=>SAIDAS_REAIS.includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0))} saídas`
   document.getElementById('m-nasc').textContent = fmt(nasc)
   document.getElementById('m-movs').textContent = fmt(movs.length)
 
