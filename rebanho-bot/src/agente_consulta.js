@@ -93,7 +93,7 @@ async function buscarDadosOperacionais(pergunta, fazenda) {
     const resultados = {}
 
     // Movimentações recentes
-    if (perguntaLower.match(/nascimento|morte|compra|venda|movi/)) {
+    if (perguntaLower.match(/nascimento|morte|compra|venda|abate|desmama|transfer|movi/)) {
       const { data } = await sb
         .from('movimentacoes_lote')
         .select('tipo, categoria, quantidade, data_movimentacao, lote_nome')
