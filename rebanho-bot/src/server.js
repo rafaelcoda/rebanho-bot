@@ -1,6 +1,19 @@
 require('dotenv').config()
 const dbFazendas = require('./db_fazendas')
-// v1781658720
+
+// ─── Módulos lazy (carregados sob demanda) ──────────────────
+let _agenteConsulta = null
+function getAgenteConsulta() {
+  if (!_agenteConsulta) _agenteConsulta = require('./agente_consulta')
+  return _agenteConsulta
+}
+let _agenteLogs = null
+function getAgenteLogs() {
+  if (!_agenteLogs) _agenteLogs = require('./agente_logs')
+  return _agenteLogs
+}
+
+// v1781658883
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1386,7 +1399,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781658720', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781658883', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1527,16 +1540,6 @@ app.get('/api/exportar-finetuning/stats', async (req, res) => {
 
 
 // ─── Agente de Logs — busca e analisa logs do Fly.io automaticamente ──────────
-let _agenteLogs = null
-function getAgenteLogs() {
-  if (!_agenteLogs) _agenteLogs = require('./agente_logs')
-let _agenteConsulta = null
-function getAgenteConsulta() {
-  if (!_agenteConsulta) _agenteConsulta = require('./agente_consulta')
-  return _agenteConsulta
-}
-  return _agenteLogs
-}
 
 // Endpoint para execução manual e consulta de insights
 app.get('/api/insights', async (req, res) => {
