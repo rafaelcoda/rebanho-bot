@@ -1,11 +1,17 @@
 const { createClient } = require('@supabase/supabase-js')
 const ws = require('ws')
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-  { global: { WebSocket: ws } }
-)
+let _supabase = null
+const supabase = new Proxy({}, {
+  get(_, prop) {
+    if (!_supabase) _supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY,
+      { global: { WebSocket: ws } }
+    )
+    return _supabase[prop]
+  }
+})
 
 async function buscarOuCriarLote(fazenda, loteNome, loteExtra = {}) {
   const nome = loteNome || 'Geral'
