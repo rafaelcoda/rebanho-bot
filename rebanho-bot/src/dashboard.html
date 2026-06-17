@@ -312,7 +312,7 @@
             </tr>
           </thead>
           <tbody id="movs-body">
-            <tr><td colspan="6"><div class="loading"><div class="spin"></div> carregando...</div></td></tr>
+            <tr><td colspan="7"><div class="loading"><div class="spin"></div> carregando...</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -452,7 +452,7 @@ async function carregarDados() {
 
   // Lotes
   await carregarLotes()
-  await carregarAlertas()
+  // alertas removidos do dashboard principal
 }
 
 async function carregarLotes() {
@@ -554,6 +554,7 @@ async function carregarMovimentacoes() {
     <tr>
       <td>${fmtDate(m.data_mov)}</td>
       <td>${m.fazenda || '—'}</td>
+      <td style="font-size:11px;color:var(--subtle)">${(m.whatsapp_de||'').replace('whatsapp:+55','') || '—'}</td>
       <td><span class="pill ${tipoPill(m.tipo)}">${tipoLabel(m.tipo)}</span></td>
       <td>${m.categoria || '—'}</td>
       <td>${m.lotes?.nome || m.lote_nome || '—'}</td>
