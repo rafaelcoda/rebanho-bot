@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781720856
+// v1781721088
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1477,7 +1477,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781720856', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781721088', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1708,11 +1708,11 @@ app.get('/dashboard', (req, res) => {
 })
 
 const PORT = process.env.PORT || 3000
-// ─── Iniciar agente de análise ───────────────────────────────
-const agenteAnalise = require('./agente_analise')
-agenteAnalise.iniciarAgendamento()
 
 app.listen(PORT, () => {
+  // ─── Iniciar agentes após servidor subir ─────────────────
+  const agenteAnalise = require('./agente_analise')
+  agenteAnalise.iniciarAgendamento()
   console.log(`Servidor na porta ${PORT}`)
   supabase.from('configuracoes').select('chave, valor').then(({ data }) => {
     if (data) data.forEach(c => { process.env['CFG_'+c.chave.toUpperCase()] = c.valor })
