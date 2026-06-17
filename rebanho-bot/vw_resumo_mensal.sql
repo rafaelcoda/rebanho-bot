@@ -1,8 +1,8 @@
 CREATE OR REPLACE VIEW vw_resumo_mensal AS
 SELECT
   COALESCE(m.fazenda, 'Grupo Ricci') AS fazenda,
-  EXTRACT(MONTH FROM m.data_movimentacao::date)::int AS mes,
-  EXTRACT(YEAR FROM m.data_movimentacao::date)::int AS ano,
+  EXTRACT(MONTH FROM m.data_mov::date)::int AS mes,
+  EXTRACT(YEAR FROM m.data_mov::date)::int AS ano,
   SUM(m.quantidade) FILTER (WHERE m.tipo = 'nascimento') AS nascimentos,
   SUM(m.quantidade) FILTER (WHERE m.tipo = 'morte') AS mortes,
   SUM(m.quantidade) FILTER (WHERE m.tipo = 'compra') AS compras,
@@ -14,9 +14,10 @@ SELECT
     THEN ROUND((SUM(m.quantidade) FILTER (WHERE m.tipo = 'morte')::numeric /
       NULLIF(SUM(m.quantidade) FILTER (WHERE m.tipo IN ('nascimento','compra')),0))*100,2)
     ELSE 0 END AS mortalidade_pct,
-  MAX(m.data_movimentacao::date) AS ultima_movimentacao
+  MAX(m.data_mov::date) AS ultima_movimentacao
 FROM movimentacoes_lote m
-WHERE m.data_movimentacao IS NOT NULL
-GROUP BY COALESCE(m.fazenda,'Grupo Ricci'),
-  EXTRACT(MONTH FROM m.data_movimentacao::date),
-  EXTRACT(YEAR FROM m.data_movimentacao::date);
+WHERE m.data_mov IS NOT NULL
+GROUP BY
+  COALESCE(m.fazenda, 'Grupo Ricci'),
+  EXTRACT(MONTH FROM m.data_mov::date),
+  EXTRACT(YEAR FROM m.data_mov::date);
