@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781713018
+// v1781713313
 
 const express = require('express')
 const twilio = require('twilio')
@@ -1437,7 +1437,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781713018', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781713313', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1629,14 +1629,15 @@ function getSbDash() {
 app.get('/api/dashboard/movimentacoes', async (req, res) => {
   try {
     const { fazenda, desde, tipo } = req.query
-    let q = getSbDash().from('movimentacoes_lote').select('*,lotes(nome)').order('data_mov', { ascending: false }).limit(200)
+    console.log('[Dashboard] movimentacoes:', { fazenda, desde, tipo })
+    let q = getSbDash().from('movimentacoes_lote').select('id,fazenda,tipo,categoria,quantidade,data_mov,lote_nome,lote_id').order('data_mov', { ascending: false }).limit(200)
     if (desde) q = q.gte('data_mov', desde)
     if (fazenda && fazenda !== 'Grupo Ricci') q = q.eq('fazenda', fazenda)
     if (tipo) q = q.eq('tipo', tipo)
     const { data, error } = await q
-    if (error) return res.status(500).json({ error: error.message })
-    res.json(data)
-  } catch(e) { res.status(500).json({ error: e.message }) }
+    if (error) { console.log('[Dashboard] erro:', error); return res.status(500).json({ error: error.message }) }
+    res.json(data || [])
+  } catch(e) { console.log('[Dashboard] catch:', e.message); res.status(500).json({ error: e.message }) }
 })
 
 app.get('/api/dashboard/lotes', async (req, res) => {
