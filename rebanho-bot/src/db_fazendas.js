@@ -134,9 +134,10 @@ async function listarFazendas() {
 
 // ─── Resolver contexto completo de um registro ────────────────
 // Recebe texto bruto e retorna {fazenda_id, lote_id, tipo_id, fazenda_nome, lote_nome, tipo_nome}
-async function resolverContexto(fazendaNome, loteNome, tipoNome) {
+async function resolverContexto(fazendaNome, subdivisaoNome, loteNome, tipoNome) {
   const resultado = {
     fazenda_id: null, fazenda_nome: null,
+    subdivisao_id: null, subdivisao_nome: null,
     lote_id: null, lote_nome: null,
     tipo_id: null, tipo_nome: null
   }
@@ -147,6 +148,15 @@ async function resolverContexto(fazendaNome, loteNome, tipoNome) {
     if (fazenda) {
       resultado.fazenda_id = fazenda.id
       resultado.fazenda_nome = fazenda.nome
+    }
+  }
+
+  // Resolver subdivisão (precisa da fazenda)
+  if (subdivisaoNome && resultado.fazenda_id) {
+    const sub = await resolverSubdivisao(subdivisaoNome, resultado.fazenda_id)
+    if (sub) {
+      resultado.subdivisao_id = sub.id
+      resultado.subdivisao_nome = sub.nome
     }
   }
 
@@ -173,10 +183,12 @@ async function resolverContexto(fazendaNome, loteNome, tipoNome) {
 
 module.exports = {
   resolverFazenda,
+  resolverSubdivisao,
   resolverLote,
   resolverTipoAnimal,
   resolverContexto,
   listarLotes,
+  listarSubdivisoes,
   listarFazendas,
   normalizar
 }
