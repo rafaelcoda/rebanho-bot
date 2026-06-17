@@ -3,819 +3,602 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebanho Bovino — Grupo Ricci</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<title>Rebanho — Grupo Ricci</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --verde: #0f6e56; --verde2: #085041; --verde-light: #e6f5f0;
-    --amber: #d97706; --amber-light: #fef3c7;
-    --red: #dc2626; --red-light: #fee2e2;
-    --blue: #1d4ed8; --blue-light: #dbeafe;
-    --bg: #f4f3ee; --card: #fff; --border: #e0ded8;
-    --text: #1a1a18; --muted: #6b6b67;
+    --green:   #1D9E75;
+    --green-l: #E1F5EE;
+    --green-d: #085041;
+    --red:     #E24B4A;
+    --red-l:   #FCEBEB;
+    --amber:   #EF9F27;
+    --amber-l: #FAEEDA;
+    --blue:    #378ADD;
+    --blue-l:  #E6F1FB;
+    --purple:  #7F77DD;
+    --gray:    #888780;
+    --gray-l:  #F1EFE8;
+    --bg:      #FAFAF8;
+    --surface: #FFFFFF;
+    --border:  rgba(0,0,0,0.08);
+    --text:    #2C2C2A;
+    --muted:   #5F5E5A;
+    --subtle:  #888780;
   }
-  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); }
-  header {
-    background: var(--verde); color: #fff; padding: 16px 28px;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:      #1A1A18;
+      --surface: #242422;
+      --border:  rgba(255,255,255,0.08);
+      --text:    #E8E6DF;
+      --muted:   #B4B2A9;
+      --subtle:  #888780;
+      --gray-l:  #2C2C2A;
+      --green-l: #04342C;
+      --red-l:   #501313;
+      --amber-l: #412402;
+      --blue-l:  #042C53;
+    }
   }
-  header h1 { font-size: 18px; font-weight: 600; }
-  .header-right { display: flex; align-items: center; gap: 12px; }
-  select#selMeses {
-    padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,.3);
-    background: rgba(255,255,255,.15); color: #fff; font-size: 13px; cursor: pointer;
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+  
+  /* Layout */
+  .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  
+  /* Sidebar */
+  .sidebar { background: var(--surface); border-right: 0.5px solid var(--border); padding: 1.5rem 1rem; display: flex; flex-direction: column; gap: 2rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .logo { display: flex; align-items: center; gap: 10px; padding: 0 0.5rem; }
+  .logo-mark { width: 32px; height: 32px; background: var(--green); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; }
+  .logo-text { font-weight: 500; font-size: 15px; }
+  .logo-sub { font-size: 11px; color: var(--subtle); }
+  .nav-section { display: flex; flex-direction: column; gap: 2px; }
+  .nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--subtle); padding: 0 0.5rem; margin-bottom: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all 0.1s; border: none; background: none; width: 100%; text-align: left; }
+  .nav-item:hover { background: var(--gray-l); color: var(--text); }
+  .nav-item.active { background: var(--green-l); color: var(--green-d); font-weight: 500; }
+  .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; margin-left: auto; }
+  .dot-green { background: var(--green); }
+  .dot-red   { background: var(--red); }
+  .dot-amber { background: var(--amber); }
+
+  /* Main */
+  .main { padding: 2rem; overflow-x: hidden; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+  .topbar-left h1 { font-size: 20px; font-weight: 500; }
+  .topbar-left p  { font-size: 13px; color: var(--subtle); margin-top: 2px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .badge-online { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--green-d); background: var(--green-l); padding: 5px 10px; border-radius: 20px; }
+  .badge-online::before { content: ''; width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
+  select { font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 0.5px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; background: var(--gray-l); border-radius: 8px; padding: 3px; margin-bottom: 1.5rem; width: fit-content; }
+  .tab { font-size: 12px; padding: 5px 14px; border-radius: 6px; border: none; background: none; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+
+  /* Metrics */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+  .metric { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; }
+  .metric-label { font-size: 11px; color: var(--subtle); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .metric-value { font-size: 28px; font-weight: 500; letter-spacing: -0.5px; }
+  .metric-sub { font-size: 11px; color: var(--subtle); margin-top: 4px; }
+  .up   { color: var(--green); }
+  .down { color: var(--red); }
+  .warn { color: var(--amber); }
+
+  /* Cards */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  .card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 12px; padding: 1.25rem; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .card-title { font-size: 13px; font-weight: 500; }
+  .card-sub { font-size: 11px; color: var(--subtle); }
+
+  /* Lotes */
+  .lote-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .lote-row:last-child { border-bottom: none; }
+  .lote-left { display: flex; align-items: center; gap: 10px; }
+  .lote-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .lote-name { font-size: 13px; font-weight: 500; }
+  .lote-meta { font-size: 11px; color: var(--subtle); }
+  .lote-right { text-align: right; }
+  .lote-count { font-size: 15px; font-weight: 500; }
+  .lote-trend { font-size: 11px; }
+  .bar-wrap { margin-top: 4px; }
+  .bar-track { height: 3px; background: var(--gray-l); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+
+  /* Alertas */
+  .alerta-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+  .alerta-row:last-child { border-bottom: none; }
+  .alerta-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; }
+  .alerta-icon.w  { background: var(--amber-l); color: var(--amber); }
+  .alerta-icon.i  { background: var(--blue-l); color: var(--blue); }
+  .alerta-icon.d  { background: var(--red-l); color: var(--red); }
+  .alerta-icon.s  { background: var(--green-l); color: var(--green); }
+  .alerta-body { flex: 1; }
+  .alerta-text { font-size: 12px; line-height: 1.5; }
+  .alerta-meta { font-size: 11px; color: var(--subtle); margin-top: 3px; }
+
+  /* Table */
+  .table { width: 100%; border-collapse: collapse; }
+  .table th { font-size: 11px; color: var(--subtle); text-align: left; padding: 6px 8px; border-bottom: 0.5px solid var(--border); font-weight: 500; }
+  .table td { font-size: 12px; padding: 9px 8px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+  .table tr:last-child td { border-bottom: none; }
+  .pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .pill-green  { background: var(--green-l); color: var(--green-d); }
+  .pill-red    { background: var(--red-l); color: var(--red); }
+  .pill-amber  { background: var(--amber-l); color: var(--amber); }
+  .pill-blue   { background: var(--blue-l); color: var(--blue); }
+  .pill-gray   { background: var(--gray-l); color: var(--muted); }
+
+  /* Loading */
+  .loading { display: flex; align-items: center; justify-content: center; height: 120px; color: var(--subtle); font-size: 13px; gap: 8px; }
+  .spin { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 2rem; color: var(--subtle); font-size: 13px; }
+  .btn-sm { font-size: 12px; padding: 5px 12px; border-radius: 6px; border: 0.5px solid var(--border); background: none; color: var(--text); cursor: pointer; }
+  .btn-sm:hover { background: var(--gray-l); }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
   }
-  select#selMeses option { color: #000; background: #fff; }
-  .btn-refresh {
-    padding: 6px 14px; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.3);
-    color: #fff; border-radius: 6px; font-size: 13px; cursor: pointer;
-  }
-  .btn-refresh:hover { background: rgba(255,255,255,.3); }
-  #ultima-att { font-size: 11px; opacity: .7; }
-
-  .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
-
-  /* ALERTAS */
-  #alertas { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
-  .alerta {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
-  }
-  .alerta-red { background: var(--red-light); color: var(--red); border: 1px solid #fca5a5; }
-  .alerta-amber { background: var(--amber-light); color: var(--amber); border: 1px solid #fcd34d; }
-  .alerta-verde { background: var(--verde-light); color: var(--verde); border: 1px solid #6ee7b7; }
-
-  /* KPIs */
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
-  .kpi { background: var(--card); border-radius: 12px; padding: 18px 20px; border: 1px solid var(--border); }
-  .kpi .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
-  .kpi .valor { font-size: 26px; font-weight: 700; color: var(--verde); }
-  .kpi .delta { font-size: 12px; margin-top: 4px; }
-  .delta-up { color: var(--verde); } .delta-down { color: var(--red); } .delta-neu { color: var(--muted); }
-
-  /* COMPARAÇÃO */
-  .comparacao {
-    background: var(--card); border-radius: 12px; border: 1px solid var(--border);
-    padding: 20px; margin-bottom: 24px;
-  }
-  .comparacao h2 { font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; letter-spacing: .04em; }
-  .comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .comp-col h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
-  .comp-col.atual h3 { border-color: var(--verde); color: var(--verde); }
-  .comp-col.anterior h3 { border-color: var(--muted); color: var(--muted); }
-  .comp-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--bg); }
-  .comp-row .comp-label { color: var(--muted); }
-  .comp-row .comp-val { font-weight: 600; }
-
-  /* GRID DE GRÁFICOS */
-  .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
-  @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } .comp-grid { grid-template-columns: 1fr; } }
-  .chart-card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 20px; }
-  .chart-card h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 16px; }
-  .chart-card canvas { max-height: 260px; }
-
-  /* MOVIMENTAÇÕES */
-  .mov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .mov-card { background: var(--card); border-radius: 10px; border: 1px solid var(--border); padding: 14px 16px; }
-  .mov-card .mov-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .mov-card .mov-val { font-size: 22px; font-weight: 700; margin-top: 4px; }
-  .mov-nasc .mov-val { color: var(--verde); }
-  .mov-comp .mov-val { color: var(--blue); }
-  .mov-vend .mov-val { color: var(--amber); }
-  .mov-mort .mov-val { color: var(--red); }
-  .mov-transf .mov-val { color: #7c3aed; }
-
-  /* TABELA CATEGORIAS */
-  .table-card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 24px; }
-  .table-card-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
-  .table-card-header h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .tab-btns { display: flex; gap: 6px; }
-  .tab-btn { padding: 4px 10px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: #fff; }
-  .tab-btn.active { background: var(--verde); color: #fff; border-color: var(--verde); }
-  table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { text-align: left; padding: 8px 14px; background: var(--bg); color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
-  td { padding: 9px 14px; border-bottom: 1px solid var(--bg); }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fafaf7; }
-  .badge-m { background: #dbeafe; color: #1d4ed8; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; }
-  .badge-f { background: #fce7f3; color: #be185d; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; }
-  .mort-ok { color: var(--verde); font-weight: 600; }
-  .mort-warn { color: var(--amber); font-weight: 600; }
-  .mort-high { color: var(--red); font-weight: 600; }
-
-  /* HISTÓRICO */
-  .hist-table { background: var(--card); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
-  .hist-table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
-  .hist-table-header h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-
-  .loading { text-align: center; padding: 60px; color: var(--muted); }
-  .erro { background: var(--red-light); color: var(--red); padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; }
-
-  /* Drill-down histórico */
-  .hist-mes-row { cursor: pointer; user-select: none; transition: background .15s; }
-  .hist-mes-row:hover td { background: #f0faf6 !important; }
-  .hist-mes-row td:first-child::before { content: '▶ '; font-size: 10px; color: var(--verde); transition: transform .2s; display: inline-block; }
-  .hist-mes-row.aberto td:first-child::before { content: '▼ '; }
-  .hist-dia-row { background: #fafaf7; display: none; }
-  .hist-dia-row.visivel { display: table-row; }
-  .hist-dia-row td:first-child { padding-left: 28px; color: var(--muted); font-size: 11px; }
-  .hist-dia-row td { font-size: 12px; border-bottom: 1px solid var(--bg); }
-  .sem-dias { text-align:center; color: var(--muted); font-size: 11px; font-style: italic; }
-
-
-  .mov-badge { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
-  .mov-entrada { background:#e6f4ea; color:#1e7e34; }
-  .mov-saida   { background:#fdecea; color:#c62828; }
-  .mov-transf  { background:#e8f0fe; color:#1a56db; }
-  .mov-peso    { background:#fff3e0; color:#e65100; }
-  .anom-card { padding:12px 16px; border-radius:10px; margin-bottom:8px; display:flex; align-items:flex-start; gap:10px; }
-  .anom-critica { background:#fdecea; border-left:4px solid #c62828; }
-  .anom-alta    { background:#fff3e0; border-left:4px solid #e65100; }
-  .anom-media   { background:#fffde7; border-left:4px solid #f9a825; }
-  .anom-baixa   { background:#f1f8e9; border-left:4px solid #558b2f; }
-  .anom-icon { font-size:18px; margin-top:1px; }
-  .anom-msg { font-size:13px; line-height:1.5; }
-  .anom-badge { display:inline-block; padding:1px 7px; border-radius:8px; font-size:10px; font-weight:700; text-transform:uppercase; margin-right:6px; }
-  .badge-critica { background:#c62828; color:#fff; }
-  .badge-alta    { background:#e65100; color:#fff; }
-  .badge-media   { background:#f9a825; color:#fff; }
-  .badge-baixa   { background:#558b2f; color:#fff; }
-
-
-  .intel-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:8px; }
-  .intel-col { background:var(--card); border-radius:12px; padding:14px; min-height:120px; }
-  .intel-col-title { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
-  .intel-item { padding:8px 10px; border-radius:8px; margin-bottom:6px; font-size:12px; line-height:1.5; }
-  .intel-erro    { background:#fdecea; border-left:3px solid #c62828; color:#7a1a1a; }
-  .intel-tratado { background:#e8f0fe; border-left:3px solid #1a56db; color:#1a3a7a; }
-  .intel-aprendeu{ background:#e6f4ea; border-left:3px solid #1e7e34; color:#0d4a1f; }
-  .intel-empty   { font-size:12px; color:var(--muted); font-style:italic; padding:4px 0; }
-  .intel-badge   { display:inline-block; padding:1px 6px; border-radius:6px; font-size:10px; font-weight:700; margin-right:4px; }
-  .badge-critica { background:#c62828; color:#fff; }
-  .badge-alta    { background:#e65100; color:#fff; }
-  .badge-media   { background:#f9a825; color:#1a1a1a; }
-  .badge-ok      { background:#1e7e34; color:#fff; }
-  .badge-info    { background:#1a56db; color:#fff; }
-  .limiar-bar    { flex:1; height:6px; background:var(--bg); border-radius:3px; overflow:hidden; }
-  .limiar-fill   { height:100%; background:var(--verde); border-radius:3px; transition:width .5s; }
-  .sem-dados { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>🐄 Mapa de Rebanho — Grupo Ricci</h1>
-  <div class="header-right">
-    <select id="selMeses" onchange="carregar()">
-      <option value="3">3 meses</option>
-      <option value="6">6 meses</option>
-      <option value="12" selected>12 meses</option>
-      <option value="24">24 meses</option>
-      <option value="36">36 meses</option>
-    </select>
-    <select id="selMesRef" onchange="mudarMesRef()" title="Mês de referência para KPIs" style="background:var(--card);color:var(--text);border:1px solid #d1fae5;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;margin-right:8px">
-      <option value="">Mês mais recente</option>
-    </select>
-    <button class="btn-refresh" onclick="carregar()">↻ Atualizar</button>
-    <span id="ultima-att"></span>
-  </div>
-</header>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">GR</div>
+      <div>
+        <div class="logo-text">Grupo Ricci</div>
+        <div class="logo-sub">Gestão de rebanho</div>
+      </div>
+    </div>
+    <nav class="nav-section">
+      <div class="nav-label">Visão geral</div>
+      <button class="nav-item active" onclick="showSection('dashboard')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" onclick="showSection('movimentacoes')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>
+        Movimentações
+      </button>
+      <button class="nav-item" onclick="showSection('alertas')">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        Alertas
+        <span class="nav-dot dot-amber" id="alerta-dot" style="display:none;"></span>
+      </button>
+    </nav>
+    <nav class="nav-section">
+      <div class="nav-label">Fazendas</div>
+      <button class="nav-item" onclick="setFazenda('Grupo Ricci'); highlightNav(this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Todas
+        <span class="nav-dot dot-green"></span>
+      </button>
+      <button class="nav-item" onclick="setFazenda('Fazenda A'); highlightNav(this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+        Fazenda A
+        <span class="nav-dot dot-green"></span>
+      </button>
+      <button class="nav-item" onclick="setFazenda('Fazenda B'); highlightNav(this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+        Fazenda B
+        <span class="nav-dot dot-amber"></span>
+      </button>
+      <button class="nav-item" onclick="setFazenda('Fazenda C'); highlightNav(this)">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 3"/></svg>
+        Fazenda C
+        <span class="nav-dot dot-green"></span>
+      </button>
+    </nav>
+  </aside>
 
-<div class="container">
-  
-  
+  <!-- Main -->
+  <main class="main">
+    <!-- Dashboard section -->
+    <div id="section-dashboard">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1 id="page-title">Todas as fazendas</h1>
+          <p id="page-sub">Carregando dados...</p>
+        </div>
+        <div class="topbar-right">
+          <div class="badge-online">Bot online</div>
+          <select id="mes-sel" onchange="carregarDados()">
+            <option value="0">Este mês</option>
+            <option value="1">Mês passado</option>
+            <option value="3">Últimos 3 meses</option>
+          </select>
+          <button class="btn-sm" onclick="carregarDados()">↻ Atualizar</button>
+        </div>
+      </div>
 
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg>
+            Total do rebanho
+          </div>
+          <div class="metric-value" id="m-total"><div class="spin" style="display:inline-block;"></div></div>
+          <div class="metric-sub" id="m-total-sub">carregando...</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16m8-8H4"/></svg>
+            Nascimentos
+          </div>
+          <div class="metric-value up" id="m-nasc">—</div>
+          <div class="metric-sub" id="m-nasc-sub">bezerros + bezerras</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            Mortalidade
+          </div>
+          <div class="metric-value" id="m-mort">—</div>
+          <div class="metric-sub" id="m-mort-sub">limite: 5%</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>
+            Movimentações
+          </div>
+          <div class="metric-value" id="m-movs">—</div>
+          <div class="metric-sub" id="m-movs-sub">no período</div>
+        </div>
+      </div>
 
-  
-      <div class="intel-col">
-        <div class="intel-col-title" style="color:#1a56db">⚙️ Tratamentos Aplicados</div>
-        <div id="intel-tratados"><div class="intel-empty">Carregando...</div></div>
+      <div class="grid-3">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Movimentações por tipo</span>
+            <span class="card-sub" id="chart-period">este mês</span>
+          </div>
+          <div style="position:relative; height:220px;">
+            <canvas id="chart-tipos" role="img" aria-label="Gráfico de movimentações por tipo"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Distribuição</span>
+            <span class="card-sub">M/F</span>
+          </div>
+          <div style="position:relative; height:180px;">
+            <canvas id="chart-mf" role="img" aria-label="Distribuição machos e fêmeas"></canvas>
+          </div>
+          <div id="legend-mf" style="display:flex;justify-content:center;gap:16px;margin-top:12px;font-size:11px;color:var(--subtle);"></div>
+        </div>
       </div>
-      <div class="intel-col">
-        <div class="intel-col-title" style="color:#1e7e34">✅ O que o Agente Aprendeu</div>
-        <div id="intel-aprendeu"><div class="intel-empty">Carregando...</div></div>
-      </div>
-    </div>
-    <div id="intel-limiar-info" style="margin-top:12px;padding:10px 14px;background:var(--card);border-radius:10px;display:none">
-      <div style="font-size:12px;font-weight:600;margin-bottom:6px">Limiar de Confiança</div>
-      <div style="display:flex;align-items:center;gap:8px;font-size:12px">
-        <span id="intel-limiar-val" style="font-size:16px;font-weight:700;color:var(--verde)">70%</span>
-        <div class="limiar-bar"><div class="limiar-fill" id="intel-limiar-bar" style="width:70%"></div></div>
-        <span style="color:var(--muted);font-size:11px">auto-ajustado pelo agente</span>
-      </div>
-    </div>
-  </div>
 
-  <div class="hist-table" style="margin-top:20px" id="painel-inteligencia">
-    <div class="hist-table-header" style="display:flex;align-items:center;justify-content:space-between">
-      <h2>🧠 Inteligência do Agente</h2>
-      <button onclick="carregarIntelAgente()" style="font-size:11px;padding:4px 10px;background:var(--verde);color:#fff;border:none;border-radius:8px;cursor:pointer">🔄 Atualizar</button>
-    </div>
-    <div class="intel-grid">
-      <div class="intel-col">
-        <div class="intel-col-title" style="color:#c62828">🚨 Erros Detectados</div>
-        <div id="intel-erros"><div class="intel-empty">Carregando...</div></div>
-      </div>
-      <div class="intel-col">
-        <div class="intel-col-title" style="color:#1a56db">⚙️ Tratamentos Aplicados</div>
-        <div id="intel-tratados"><div class="intel-empty">Carregando...</div></div>
-      </div>
-      <div class="intel-col">
-        <div class="intel-col-title" style="color:#1e7e34">✅ O que o Agente Aprendeu</div>
-        <div id="intel-aprendeu"><div class="intel-empty">Carregando...</div></div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Lotes ativos</span>
+            <span class="card-sub" id="lotes-fazenda">—</span>
+          </div>
+          <div id="lotes-list"><div class="loading"><div class="spin"></div> carregando...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Alertas recentes</span>
+            <span class="card-sub" id="alertas-count">—</span>
+          </div>
+          <div id="alertas-list"><div class="loading"><div class="spin"></div> carregando...</div></div>
+        </div>
       </div>
     </div>
-    <div id="intel-limiar-info" style="margin-top:12px;padding:10px 14px;background:var(--card);border-radius:10px;display:none">
-      <div style="font-size:12px;font-weight:600;margin-bottom:6px">Limiar de Confiança</div>
-      <div style="display:flex;align-items:center;gap:8px;font-size:12px">
-        <span id="intel-limiar-val" style="font-size:16px;font-weight:700;color:var(--verde)">70%</span>
-        <div class="limiar-bar"><div class="limiar-fill" id="intel-limiar-bar" style="width:70%"></div></div>
-        <span style="color:var(--muted);font-size:11px">auto-ajustado pelo agente</span>
-      </div>
-    </div>
-  </div>
-<div id="alertas"></div>
-  <div id="kpis" class="kpis"><div class="loading">Carregando...</div></div>
-  <div id="comparacao" class="comparacao" style="display:none"></div>
-  <div class="charts-grid">
-    <div class="chart-card"><h2>Evolução do Rebanho</h2><canvas id="chartEvolucao"></canvas></div>
-    <div class="chart-card"><h2>Machos vs Fêmeas</h2><canvas id="chartPizza"></canvas></div>
-  </div>
-  <div class="chart-card" style="margin-bottom:24px"><h2>Movimentações Mensais</h2><canvas id="chartMov" style="max-height:200px"></canvas></div>
-  <div id="movCards" class="mov-grid"></div>
-  <div id="tabelaCat" class="table-card"></div>
-  
-  <div id="finetuning-section" class="hist-table" style="margin-top:24px">
-    <div class="hist-table-header" style="display:flex;align-items:center;justify-content:space-between">
-      <h2>🧠 Fine-tuning</h2>
-      <div style="display:flex;gap:8px">
-        <button onclick="verStatsFinetuning()" style="font-size:12px;padding:6px 14px;background:var(--card);color:var(--verde);border:2px solid var(--verde);border-radius:8px;cursor:pointer">📊 Ver stats</button>
-        <button onclick="exportarFinetuning()" id="btnExportar" style="font-size:12px;padding:6px 14px;background:var(--verde);color:#fff;border:none;border-radius:8px;cursor:pointer">⬇️ Exportar JSONL</button>
-      </div>
-    </div>
-    <div id="finetuning-stats" style="padding:12px 0;font-size:13px;color:var(--muted)">Clique em "Ver stats" para verificar quantos exemplos confirmados temos para fine-tuning.</div>
-  </div>
 
-<div id="historico" class="hist-table" style="margin-top:24px"></div>
-  <div id="movimentacoes" class="hist-table" style="margin-top:24px"></div>
+    <!-- Movimentações section -->
+    <div id="section-movimentacoes" style="display:none;">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1>Movimentações</h1>
+          <p id="movs-sub">Carregando...</p>
+        </div>
+        <div class="topbar-right">
+          <select id="tipo-sel" onchange="carregarMovimentacoes()">
+            <option value="">Todos os tipos</option>
+            <option value="nascimento">Nascimentos</option>
+            <option value="morte">Mortes</option>
+            <option value="compra">Compras</option>
+            <option value="venda">Vendas</option>
+            <option value="troca">Trocas</option>
+          </select>
+        </div>
+      </div>
+      <div class="card">
+        <table class="table" id="movs-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Fazenda</th>
+              <th>Tipo</th>
+              <th>Categoria</th>
+              <th>Lote</th>
+              <th style="text-align:right;">Qtd</th>
+            </tr>
+          </thead>
+          <tbody id="movs-body">
+            <tr><td colspan="6"><div class="loading"><div class="spin"></div> carregando...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Alertas section -->
+    <div id="section-alertas" style="display:none;">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1>Alertas</h1>
+          <p>Anomalias detectadas pelo agente de análise</p>
+        </div>
+      </div>
+      <div class="card">
+        <div id="alertas-full-list"><div class="loading"><div class="spin"></div> carregando...</div></div>
+      </div>
+    </div>
+  </main>
 </div>
 
 <script>
-const API = window.location.origin
-const MESES = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-const MESES_FULL = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
-let chartEv, chartPz, chartMv
-let dadosGlobais = []
-let filtroCat = 'todos'
-let mesRefIndex = 0
+let fazendaAtual = 'Grupo Ricci'
+let chartTipos = null
+let chartMF = null
 
-function mudarMesRef() {
-  mesRefIndex = parseInt(document.getElementById('selMesRef').value) || 0
-  if (!dadosGlobais.length) return
-  const d = dadosGlobais[mesRefIndex] || dadosGlobais[0]
-  renderKPIs(dadosGlobais)
-  renderComparacao(dadosGlobais)
-  renderChartPizza(d)
-  renderMovCards(d)
-  renderTabelaCat(d)
-}
-
-function popularSelMesRef(dados) {
-  const sel = document.getElementById('selMesRef')
-  const MB = ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-  sel.innerHTML = '<option value="">Mês mais recente</option>'
-  dados.forEach(function(d, i) {
-    var opt = document.createElement('option')
-    opt.value = i
-    opt.textContent = MB[d.mes] + '/' + d.ano + ' (' + Number(d.total_rebanho).toLocaleString('pt-BR') + ' cab)'
-    if (i === mesRefIndex) opt.selected = true
-    sel.appendChild(opt)
-  })
-}
-
-
-async function carregarIntelAgente() {
+async function api(endpoint, params = {}) {
+  const qs = Object.entries(params).filter(([,v])=>v!=null&&v!=='').map(([k,v])=>`${k}=${encodeURIComponent(v)}`).join('&')
+  const url = `/api/dashboard/${endpoint}${qs ? '?' + qs : ''}`
   try {
-    var [rI, rL, rF, rQ] = await Promise.all([
-      fetch(API+'/api/insights').then(function(r){return r.json()}),
-      fetch(API+'/api/logs?limite=30').then(function(r){return r.json()}),
-      fetch(API+'/api/exportar-finetuning/stats').then(function(r){return r.json()}),
-      fetch(API+'/api/qualidade').then(function(r){return r.json()}),
-    ])
-    var insights = rI.data||[], logs = rL.data||[], ft = rF.data||{}, qual = rQ.data||[]
-
-    // ERROS
-    var html = '', erros = insights.filter(function(i){return i.prioridade==='alta'||i.tipo==='erros_recentes'||i.tipo==='parse_errors'})
-    var logsErro = logs.filter(function(l){return l.erro||l.status==='erro'})
-    erros.forEach(function(e){
-      var b = e.prioridade==='alta'?'badge-critica':'badge-media'
-      var c = (e.dados&&e.dados.count)?' ('+e.dados.count+'x)':''
-      html += '<div class="intel-item intel-erro"><span class="intel-badge '+b+'">'+e.prioridade+'</span>'+e.tipo.replace(/_/g,' ')+c+'</div>'
-    })
-    if (logsErro.length) html += '<div class="intel-item intel-erro"><span class="intel-badge badge-critica">log</span>'+logsErro.length+' msgs com erro</div>'
-    if (qual[0]&&parseInt(qual[0].erros)>0) html += '<div class="intel-item intel-erro"><span class="intel-badge badge-alta">hoje</span>'+qual[0].erros+' erros | '+qual[0].pct_sucesso+'% sucesso</div>'
-    document.getElementById('intel-erros').innerHTML = html||'<div class="intel-empty">Nenhum erro detectado ✓</div>'
-
-    // TRATAMENTOS
-    html = ''
-    insights.filter(function(i){return i.tipo==='limiar_ajustado'||i.tipo==='baixa_confianca'}).forEach(function(t){
-      if (t.tipo==='limiar_ajustado'&&t.dados) {
-        html += '<div class="intel-item intel-tratado"><span class="intel-badge badge-info">auto</span>Limiar: '+t.dados.limiar_anterior+' → '+t.dados.limiar_novo+'</div>'
-        if (t.dados.motivo) html += '<div style="font-size:11px;color:var(--muted);padding:0 4px 4px">'+t.dados.motivo+'</div>'
-      } else if (t.tipo==='baixa_confianca'&&t.dados) {
-        html += '<div class="intel-item intel-tratado"><span class="intel-badge badge-info">rag</span>RAG reindexado — '+t.dados.count+' casos</div>'
-      }
-    })
-    var baixaConf = logs.filter(function(l){return l.confianca&&l.confianca<0.7}).length
-    if (baixaConf) html += '<div class="intel-item intel-tratado"><span class="intel-badge badge-info">pendente</span>'+baixaConf+' msgs aguardando ciclo</div>'
-    document.getElementById('intel-tratados').innerHTML = html||'<div class="intel-empty">Nenhum tratamento recente</div>'
-
-    // APRENDEU
-    html = ''
-    if (ft.total>0) {
-      var tipos = ft.por_tipo ? Object.entries(ft.por_tipo).map(function(kv){return kv[1]+' '+kv[0]}).join(', ') : ''
-      html += '<div class="intel-item intel-aprendeu"><span class="intel-badge badge-ok">fine-tuning</span>'+ft.total+' exemplos ('+tipos+')</div>'
-    }
-    var salvos = logs.filter(function(l){return l.status==='processado'&&l.salvo}).length
-    if (salvos) html += '<div class="intel-item intel-aprendeu"><span class="intel-badge badge-ok">sessão</span>'+salvos+' registros salvos</div>'
-    var distIns = insights.find(function(i){return i.tipo==='distribuicao_intencoes'})
-    if (distIns&&distIns.dados&&distIns.dados.distribuicao) {
-      var d = Object.entries(distIns.dados.distribuicao).map(function(kv){return kv[1]+'x '+kv[0]}).join(', ')
-      html += '<div class="intel-item intel-aprendeu"><span class="intel-badge badge-ok">padrão</span>'+d+'</div>'
-    }
-    document.getElementById('intel-aprendeu').innerHTML = html||'<div class="intel-empty">Continue confirmando com "sim"</div>'
-
-    // LIMIAR
-    var limIns = insights.find(function(i){return i.tipo==='limiar_ajustado'})
-    if (limIns&&limIns.dados) {
-      var l = limIns.dados.limiar_novo||0.7
-      document.getElementById('intel-limiar-info').style.display='block'
-      document.getElementById('intel-limiar-val').textContent=(l*100).toFixed(0)+'%'
-      document.getElementById('intel-limiar-bar').style.width=(l*100)+'%'
-    }
-  } catch(e) { console.log('intel erro:',e.message) }
-}
-
-async function carregar() {
-  const lim = document.getElementById('selMeses').value
-  try {
-    const r = await fetch(`${API}/api/resumo?meses=${lim}`)
-    const j = await r.json()
-    if (!j.ok) throw new Error(j.error)
-    dadosGlobais = j.data || []
-    if (!dadosGlobais.length) {
-      document.getElementById('kpis').innerHTML = '<div class="sem-dados">Nenhum dado disponível ainda. Envie um áudio pelo WhatsApp!</div>'
-      return
-    }
-    popularSelMesRef(dadosGlobais)
-    renderAlertas(dadosGlobais)
-    renderKPIs(dadosGlobais)
-    renderComparacao(dadosGlobais)
-    renderChartEvolucao(dadosGlobais)
-    renderChartPizza(dadosGlobais[0])
-    renderChartMov(dadosGlobais)
-    renderMovCards(dadosGlobais[0])
-    renderTabelaCat(dadosGlobais[0])
-    renderHistorico(dadosGlobais)
-    atualizarEstilos()
-    carregarIntelAgente().catch(function(){})
-    try { var rMov = await fetch(API + '/api/movimentacoes?limite=50'); var jMov = await rMov.json(); renderMovimentacoes(jMov.data || []) } catch(_) {}
-    document.getElementById('ultima-att').textContent = `Atualizado: ${new Date().toLocaleTimeString('pt-BR')}`
+    const r = await fetch(url)
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    return r.json()
   } catch(e) {
-    document.getElementById('kpis').innerHTML = `<div class="erro">Erro: ${e.message}</div>`
+    console.error(`Erro ao buscar ${endpoint}:`, e)
+    return []
   }
 }
 
-function renderAlertas(dados) {
-  const d = dados[0]
-  if (!d) return
-  const alertas = []
-  const mort = parseFloat(d.mortalidade_pct) || 0
-  if (mort > 2) alertas.push({ tipo: 'red', msg: `⚠️ Mortalidade alta em ${MESES_FULL[d.mes]}/${d.ano}: ${mort.toFixed(3)}% (acima de 2%)` })
-  else if (mort > 1) alertas.push({ tipo: 'amber', msg: `⚠️ Mortalidade moderada em ${MESES_FULL[d.mes]}/${d.ano}: ${mort.toFixed(3)}%` })
+function fmt(n) { return (n ?? 0).toLocaleString('pt-BR') }
+function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('pt-BR') }
 
-  if (dados.length >= 2) {
-    const prev = dados[1]
-    const varPct = prev.total_rebanho > 0 ? ((d.total_rebanho - prev.total_rebanho) / prev.total_rebanho * 100) : 0
-    if (varPct < -5) alertas.push({ tipo: 'red', msg: `📉 Rebanho reduziu ${Math.abs(varPct).toFixed(1)}% em relação ao mês anterior` })
-    else if (varPct > 10) alertas.push({ tipo: 'verde', msg: `📈 Rebanho cresceu ${varPct.toFixed(1)}% em relação ao mês anterior` })
-  }
-
-  if (!alertas.length) alertas.push({ tipo: 'verde', msg: '✅ Indicadores normais — rebanho saudável' })
-
-  document.getElementById('alertas').innerHTML = alertas.map(a =>
-    `<div class="alerta alerta-${a.tipo}">${a.msg}</div>`).join('')
+function tipoColor(t) {
+  const c = { nascimento:'#1D9E75', morte:'#E24B4A', compra:'#378ADD', venda:'#D4537E', troca:'#7F77DD', mapa:'#888780' }
+  return c[t] || '#888780'
+}
+function tipoPill(t) {
+  const c = { nascimento:'pill-green', morte:'pill-red', compra:'pill-blue', venda:'pill-amber', troca:'pill-blue', mapa:'pill-gray' }
+  return c[t] || 'pill-gray'
+}
+function tipoLabel(t) {
+  const l = { nascimento:'Nascimento', morte:'Morte', compra:'Compra', venda:'Venda', troca:'Troca', mapa:'Mapa' }
+  return l[t] || t
 }
 
-function renderKPIs(dados) {
-  var idx = mesRefIndex || 0
-  const d = dados[idx] || dados[0]
-  const prev = dados[idx + 1] || null
-  const delta = (campo) => {
-    if (!prev) return ''
-    const diff = Number(d[campo]) - Number(prev[campo])
-    if (diff === 0) return `<div class="delta delta-neu">= igual ao mês ant.</div>`
-    const sinal = diff > 0 ? '+' : ''
-    const cls = diff > 0 ? 'delta-up' : 'delta-down'
-    return `<div class="delta ${cls}">${sinal}${diff.toLocaleString('pt-BR')} vs mês ant.</div>`
-  }
-  document.getElementById('kpis').innerHTML = `
-    <div class="kpi"><div class="label">Rebanho Total</div><div class="valor">${Number(d.total_rebanho).toLocaleString('pt-BR')}</div>${delta('total_rebanho')}</div>
-    <div class="kpi"><div class="label">Machos</div><div class="valor">${Number(d.total_machos).toLocaleString('pt-BR')}</div><div class="delta delta-neu">${(d.total_machos/d.total_rebanho*100).toFixed(1)}% do rebanho</div></div>
-    <div class="kpi"><div class="label">Fêmeas</div><div class="valor">${Number(d.total_femeas).toLocaleString('pt-BR')}</div><div class="delta delta-neu">${(d.total_femeas/d.total_rebanho*100).toFixed(1)}% do rebanho</div></div>
-    <div class="kpi"><div class="label">Nascimentos</div><div class="valor">${d.total_nascimentos}</div>${delta('total_nascimentos')}</div>
-    <div class="kpi"><div class="label">Mortalidade</div><div class="valor" style="color:var(--verde)">${parseFloat(d.mortalidade_pct).toFixed(3)}%</div><div class="delta delta-neu">${d.total_mortes} mortes</div></div>
-    <div class="kpi"><div class="label">Período</div><div class="valor" style="font-size:18px">${MESES_FULL[d.mes]}</div><div class="delta delta-neu">${d.ano}</div></div>
-  `
-}
+async function carregarDados() {
+  const mesesAtras = parseInt(document.getElementById('mes-sel').value) || 0
+  const hoje = new Date()
+  const desde = new Date(hoje.getFullYear(), hoje.getMonth() - mesesAtras, 1)
+  const desdeStr = desde.toISOString().split('T')[0]
 
-function renderComparacao(dados) {
-  var idx = mesRefIndex || 0
-  if (dados.length < 2) { document.getElementById('comparacao').style.display='none'; return }
-  const a = dados[idx] || dados[0]
-  const b = dados[idx + 1] || dados[1]
-  const el = document.getElementById('comparacao')
-  el.style.display = 'block'
-  const row = (label, campoA, campoB) => {
-    const va = Number(a[campoA] || 0), vb = Number(b[campoB || campoA] || 0)
-    return `<div class="comp-row"><span class="comp-label">${label}</span><span class="comp-val">${va.toLocaleString('pt-BR')}</span></div>
-            <div class="comp-row"><span class="comp-label">${label}</span><span class="comp-val">${vb.toLocaleString('pt-BR')}</span></div>`
-  }
-  el.innerHTML = `
-    <h2>Comparação Mês Atual vs Anterior</h2>
-    <div class="comp-grid">
-      <div class="comp-col atual">
-        <h3>${MESES_FULL[a.mes]}/${a.ano} (atual)</h3>
-        ${[['Total rebanho','total_rebanho'],['Machos','total_machos'],['Fêmeas','total_femeas'],
-           ['Nascimentos','total_nascimentos'],['Compras','total_compras'],['Vendas','total_vendas'],
-           ['Mortes','total_mortes'],['Mortalidade','mortalidade_pct']].map(([l,c]) =>
-          `<div class="comp-row"><span class="comp-label">${l}</span><span class="comp-val">${c==='mortalidade_pct'?parseFloat(a[c]).toFixed(3)+'%':Number(a[c]||0).toLocaleString('pt-BR')}</span></div>`).join('')}
-      </div>
-      <div class="comp-col anterior">
-        <h3>${MESES_FULL[b.mes]}/${b.ano} (anterior)</h3>
-        ${[['Total rebanho','total_rebanho'],['Machos','total_machos'],['Fêmeas','total_femeas'],
-           ['Nascimentos','total_nascimentos'],['Compras','total_compras'],['Vendas','total_vendas'],
-           ['Mortes','total_mortes'],['Mortalidade','mortalidade_pct']].map(([l,c]) =>
-          `<div class="comp-row"><span class="comp-label">${l}</span><span class="comp-val">${c==='mortalidade_pct'?parseFloat(b[c]).toFixed(3)+'%':Number(b[c]||0).toLocaleString('pt-BR')}</span></div>`).join('')}
-      </div>
-    </div>`
-}
+  document.getElementById('page-sub').textContent = `Última atualização: ${new Date().toLocaleTimeString('pt-BR')}`
 
-function renderChartEvolucao(dados) {
-  const ord = [...dados].reverse()
-  const labels = ord.map(d => `${MESES[d.mes]}/${String(d.ano).slice(2)}`)
-  if (chartEv) chartEv.destroy()
-  chartEv = new Chart(document.getElementById('chartEvolucao'), {
-    type: 'line',
-    data: { labels, datasets: [
-      { label: 'Total', data: ord.map(d => d.total_rebanho), borderColor: '#0f6e56', backgroundColor: 'rgba(15,110,86,.08)', fill: true, tension: .3, pointRadius: 4 },
-      { label: 'Machos', data: ord.map(d => d.total_machos), borderColor: '#1d4ed8', borderDash: [4,3], tension: .3, pointRadius: 3 },
-      { label: 'Fêmeas', data: ord.map(d => d.total_femeas), borderColor: '#be185d', borderDash: [4,3], tension: .3, pointRadius: 3 },
-    ]},
-    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-      scales: { y: { beginAtZero: false, ticks: { font: { size: 11 } } }, x: { ticks: { font: { size: 11 } } } } }
-  })
-}
+  const movs = await api('movimentacoes', { fazenda: fazendaAtual, desde: desdeStr })
 
-function renderChartPizza(d) {
-  if (!d) return
-  if (chartPz) chartPz.destroy()
-  chartPz = new Chart(document.getElementById('chartPizza'), {
-    type: 'doughnut',
-    data: { labels: ['Machos', 'Fêmeas'],
-      datasets: [{ data: [d.total_machos, d.total_femeas], backgroundColor: ['#1d4ed8','#be185d'], borderWidth: 2 }] },
-    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 } } } } }
-  })
-}
+  if (!Array.isArray(movs)) { console.error('Erro ao buscar movimentações:', movs); return }
 
-function renderChartMov(dados) {
-  const ord = [...dados].reverse()
-  const labels = ord.map(d => `${MESES[d.mes]}/${String(d.ano).slice(2)}`)
-  if (chartMv) chartMv.destroy()
-  chartMv = new Chart(document.getElementById('chartMov'), {
+  // Métricas
+  const total = movs.reduce((s, m) => {
+    if (['nascimento','compra'].includes(m.tipo)) return s + (m.quantidade||0)
+    if (['morte','venda'].includes(m.tipo)) return s - (m.quantidade||0)
+    return s
+  }, 0)
+  const nasc  = movs.filter(m => m.tipo==='nascimento').reduce((s,m)=>s+(m.quantidade||0),0)
+  const mortes = movs.filter(m => m.tipo==='morte').reduce((s,m)=>s+(m.quantidade||0),0)
+  const entradas = movs.filter(m => ['nascimento','compra'].includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0)
+  const mort_pct = entradas > 0 ? ((mortes/entradas)*100).toFixed(1) : 0
+
+  document.getElementById('m-total').textContent = fmt(Math.max(0, total))
+  document.getElementById('m-total-sub').textContent = `${fmt(entradas)} entradas, ${fmt(movs.filter(m=>['morte','venda'].includes(m.tipo)).reduce((s,m)=>s+(m.quantidade||0),0))} saídas`
+  document.getElementById('m-nasc').textContent = fmt(nasc)
+  document.getElementById('m-movs').textContent = fmt(movs.length)
+
+  const mortEl = document.getElementById('m-mort')
+  mortEl.textContent = mort_pct + '%'
+  mortEl.className = 'metric-value ' + (mort_pct > 5 ? 'down' : mort_pct > 2 ? 'warn' : 'up')
+  document.getElementById('m-mort-sub').textContent = mort_pct > 5 ? '⚠ acima do limite' : mort_pct > 2 ? 'atenção recomendada' : 'dentro do normal'
+
+  // Gráfico por tipo
+  const tipos = ['nascimento','compra','venda','morte','troca']
+  const tipoData = tipos.map(t => movs.filter(m=>m.tipo===t).reduce((s,m)=>s+(m.quantidade||0),0))
+  const cores = tipos.map(tipoColor)
+  const labels = tipos.map(t => tipoLabel(t))
+  const isDark = matchMedia('(prefers-color-scheme: dark)').matches
+  const textColor = isDark ? '#B4B2A9' : '#5F5E5A'
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'
+
+  if (chartTipos) chartTipos.destroy()
+  chartTipos = new Chart(document.getElementById('chart-tipos'), {
     type: 'bar',
-    data: { labels, datasets: [
-      { label: 'Nascimentos', data: ord.map(d => d.total_nascimentos), backgroundColor: '#0f6e56' },
-      { label: 'Compras',     data: ord.map(d => d.total_compras),     backgroundColor: '#1d4ed8' },
-      { label: 'Vendas',      data: ord.map(d => d.total_vendas),      backgroundColor: '#d97706' },
-      { label: 'Mortes',      data: ord.map(d => d.total_mortes),      backgroundColor: '#dc2626' },
-    ]},
-    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
-      scales: { y: { beginAtZero: true, ticks: { font: { size: 11 } } }, x: { ticks: { font: { size: 11 } } } } }
-  })
-}
-
-function renderMovCards(d) {
-  if (!d) return
-  document.getElementById('movCards').innerHTML = `
-    <div class="mov-card mov-nasc"><div class="mov-label">Nascimentos</div><div class="mov-val">${d.total_nascimentos}</div></div>
-    <div class="mov-card mov-comp"><div class="mov-label">Compras</div><div class="mov-val">${d.total_compras}</div></div>
-    <div class="mov-card mov-vend"><div class="mov-label">Vendas</div><div class="mov-val">${d.total_vendas}</div></div>
-    <div class="mov-card mov-mort"><div class="mov-label">Mortes</div><div class="mov-val">${d.total_mortes}</div></div>
-  `
-}
-
-async function renderTabelaCat(d) {
-  if (!d) return
-  // Buscar categorias detalhadas via API
-  try {
-    const r = await fetch(`${API}/api/categorias?mes=${d.mes}&ano=${d.ano}`)
-    const j = await r.json()
-    const cats = j.data || []
-
-    const machos = cats.filter(c => c.sexo === 'M')
-    const femeas = cats.filter(c => c.sexo === 'F')
-    const todos  = cats
-
-    const linhas = (lista) => lista.length ? lista.map(c => {
-      const mort = parseFloat(c.indice_mortalidade || 0) * 100
-      const mortCls = mort > 2 ? 'mort-high' : mort > 1 ? 'mort-warn' : 'mort-ok'
-      return `<tr>
-        <td>${c.item}</td>
-        <td>${c.discriminacao}</td>
-        <td><span class="badge-${c.sexo?.toLowerCase()}">${c.sexo}</span></td>
-        <td>${(c.existencia_anterior||0).toLocaleString('pt-BR')}</td>
-        <td><strong>${(c.existencia_atual||0).toLocaleString('pt-BR')}</strong></td>
-        <td>${c.entrada_nascimento||0}</td>
-        <td>${c.entrada_compra||0}</td>
-        <td>${c.saida_venda||0}</td>
-        <td>${c.saida_morte||0}</td>
-        <td class="${mortCls}">${mort.toFixed(3)}%</td>
-      </tr>`
-    }).join('') : `<tr><td colspan="10" class="sem-dados">Sem dados para este filtro</td></tr>`
-
-    document.getElementById('tabelaCat').innerHTML = `
-      <div class="table-card-header">
-        <h2>Detalhe por Categoria — ${MESES_FULL[d.mes]}/${d.ano}</h2>
-        <div class="tab-btns">
-          <button class="tab-btn" id="btn-todos" data-filtro="todos">Todos</button>
-          <button class="tab-btn" id="btn-M" data-filtro="M">Machos</button>
-          <button class="tab-btn" id="btn-F" data-filtro="F">Fêmeas</button>
-        </div>
-      </div>
-      <div style="overflow-x:auto">
-      <table>
-        <thead><tr>
-          <th>Item</th><th>Categoria</th><th>Sexo</th>
-          <th>Exist. Ant.</th><th>Exist. Atual</th>
-          <th>Nasc.</th><th>Compras</th><th>Vendas</th><th>Mortes</th><th>Mortalidade</th>
-        </tr></thead>
-        <tbody>${linhas(filtroCat==='M'?machos:filtroCat==='F'?femeas:todos)}</tbody>
-      </table>
-      </div>`
-  } catch(e) {
-    document.getElementById('tabelaCat').innerHTML = `<div class="table-card-header"><h2>Categorias</h2></div><div class="sem-dados">Dados de categoria não disponíveis</div>`
-  }
-}
-
-// Cache de dias por mês já carregados
-const cacheHistDias = {}
-
-function renderHistorico(dados) {
-  const mesesMap = {}
-  dados.forEach(d => {
-    const key = d.ano + '-' + d.mes
-    if (!mesesMap[key]) mesesMap[key] = { mes: d.mes, ano: d.ano, registros: [] }
-    mesesMap[key].registros.push(d)
-  })
-  const meses = Object.values(mesesMap).sort((a,b) => b.ano - a.ano || b.mes - a.mes)
-
-  const linhas = meses.map(m => {
-    const total  = m.registros.reduce((s,r) => s + Number(r.total_rebanho||0), 0)
-    const machos = m.registros.reduce((s,r) => s + Number(r.total_machos||0), 0)
-    const femeas = m.registros.reduce((s,r) => s + Number(r.total_femeas||0), 0)
-    const nasc   = m.registros.reduce((s,r) => s + Number(r.total_nascimentos||0), 0)
-    const comp   = m.registros.reduce((s,r) => s + Number(r.total_compras||0), 0)
-    const vend   = m.registros.reduce((s,r) => s + Number(r.total_vendas||0), 0)
-    const mort   = m.registros.reduce((s,r) => s + Number(r.total_mortes||0), 0)
-    const mortPct = total > 0 ? (mort/total*100).toFixed(3) : '0.000'
-    const key    = m.ano + '-' + m.mes
-    const periodo = MESES_FULL[m.mes] + '/' + m.ano
-    const mortCls = parseFloat(mortPct) > 1 ? 'mort-high' : 'mort-ok'
-    var r = ''
-    r += '<tr class="hist-mes-row" data-key="' + key + '" data-mes="' + m.mes + '" data-ano="' + m.ano + '" id="mes-row-' + key + '">'
-    r += '<td><strong>' + periodo + '</strong></td>'
-    r += '<td>' + total.toLocaleString("pt-BR") + '</td>'
-    r += '<td>' + machos.toLocaleString("pt-BR") + '</td>'
-    r += '<td>' + femeas.toLocaleString("pt-BR") + '</td>'
-    r += '<td>' + nasc + '</td><td>' + comp + '</td><td>' + vend + '</td><td>' + mort + '</td>'
-    r += '<td class="' + mortCls + '">' + mortPct + '%</td>'
-    r += '</tr>'
-    r += '<tr class="hist-dia-row" id="dias-row-' + key + '">'
-    r += '<td colspan="9"><div id="dias-inner-' + key + '" style="padding:4px 8px"><em class="sem-dias">Carregando...</em></div></td>'
-    r += '</tr>'
-    return r
-  }).join('')
-
-  document.getElementById('historico').innerHTML =
-    '<div class="hist-table-header"><h2>Histórico Completo <span style="font-size:11px;color:var(--muted);font-weight:400">— clique no mês para ver os dias</span></h2></div>' +
-    '<div style="overflow-x:auto"><table>' +
-    '<thead><tr><th>Período</th><th>Total</th><th>Machos</th><th>Fêmeas</th>' +
-    '<th>Nasc.</th><th>Compras</th><th>Vendas</th><th>Mortes</th><th>Mortalidade</th></tr></thead>' +
-    '<tbody>' + linhas + '</tbody></table></div>'
-
-  // Vincular eventos via addEventListener (sem inline onclick)
-  document.querySelectorAll('.hist-mes-row').forEach(tr => {
-    tr.addEventListener('click', () => {
-      const key = tr.dataset.key
-      const mes = parseInt(tr.dataset.mes)
-      const ano = parseInt(tr.dataset.ano)
-      toggleHistDias(key, mes, ano)
-    })
-  })
-}
-
-async function toggleHistDias(key, mes, ano) {
-  const mesRow = document.getElementById('mes-row-' + key)
-  const diasRow = document.getElementById('dias-row-' + key)
-  const inner = document.getElementById('dias-inner-' + key)
-  if (!mesRow || !diasRow) return
-
-  const aberto = mesRow.classList.contains('aberto')
-  if (aberto) {
-    mesRow.classList.remove('aberto')
-    diasRow.classList.remove('visivel')
-    return
-  }
-
-  mesRow.classList.add('aberto')
-  diasRow.classList.add('visivel')
-
-  // Se já carregou, apenas mostrar
-  if (cacheHistDias[key]) { renderDiasInner(key, cacheHistDias[key]); return }
-
-  inner.innerHTML = '<em class="sem-dias">Carregando...</em>'
-
-  try {
-    const r = await fetch(API + '/api/resumo/dias?mes=' + mes + '&ano=' + ano)
-    const j = await r.json()
-    cacheHistDias[key] = j.data || []
-    renderDiasInner(key, cacheHistDias[key])
-  } catch(e) {
-    inner.innerHTML = '<em class="sem-dias">Erro ao carregar: ' + e.message + '</em>'
-  }
-}
-
-function renderDiasInner(key, dias) {
-  const inner = document.getElementById('dias-inner-' + key)
-  if (!inner) return
-
-  if (!dias || dias.length === 0) {
-    inner.innerHTML = '<em class="sem-dias">Sem registros diários para este mês</em>'
-    return
-  }
-
-  const comDia = dias.filter(d => d.dia)
-  if (comDia.length === 0) {
-    inner.innerHTML = '<em class="sem-dias">Apenas total mensal — sem registros por dia</em>'
-    return
-  }
-
-  const linhas = comDia.sort(function(a,b){ return a.dia - b.dia }).map(function(d) {
-    var mortPct = parseFloat(d.mortalidade_pct||0).toFixed(3)
-    var dataStr = String(d.dia).padStart(2,'0') + '/' + String(d.mes).padStart(2,'0') + '/' + d.ano
-    var loteStr = (d.lote_nome && d.lote_nome !== 'Geral') ? ' [' + d.lote_nome + ']' : ''
-    var mortCls = parseFloat(mortPct) > 1 ? 'mort-high' : 'mort-ok'
-    var row = '<tr class="hist-dia-row visivel" style="background:#fafaf7">'
-    row += '<td style="padding-left:28px;color:var(--muted);font-size:11px">' + dataStr + loteStr + '</td>'
-    row += '<td>' + Number(d.total_rebanho).toLocaleString('pt-BR') + '</td>'
-    row += '<td>' + Number(d.total_machos).toLocaleString('pt-BR') + '</td>'
-    row += '<td>' + Number(d.total_femeas).toLocaleString('pt-BR') + '</td>'
-    row += '<td>' + (d.total_nascimentos||0) + '</td>'
-    row += '<td>' + (d.total_compras||0) + '</td>'
-    row += '<td>' + (d.total_vendas||0) + '</td>'
-    row += '<td>' + (d.total_mortes||0) + '</td>'
-    row += '<td class="' + mortCls + '">' + mortPct + '%</td>'
-    row += '</tr>'
-    return row
-  }).join('')
-
-  // Inserir linhas <tr> diretamente na tabela, após a linha de dias
-  var diasTr = inner.closest('tr')
-  if (diasTr && diasTr.parentNode) {
-    var tmp = document.createElement('tbody')
-    tmp.innerHTML = linhas
-    var ref = diasTr
-    Array.from(tmp.querySelectorAll('tr')).forEach(function(tr) {
-      ref.parentNode.insertBefore(tr, ref.nextSibling)
-      ref = tr
-    })
-    inner.innerHTML = '<em class="sem-dias" style="font-size:11px">' + comDia.length + ' dia(s) registrado(s)</em>'
-  } else {
-    inner.innerHTML = linhas
-  }
-}
-
-
-// Event delegation para botões de filtro de categoria
-document.addEventListener('click', function(e) {
-  const btn = e.target.closest('[data-filtro]')
-  if (!btn) return
-  filtroCat = btn.dataset.filtro
-  renderTabelaCat(dadosGlobais[0])
-  atualizarEstilos()
-})
-
-async function verStatsFinetuning() {
-  var el = document.getElementById('finetuning-stats')
-  el.innerHTML = '<em style="color:var(--muted)">Carregando...</em>'
-  try {
-    var r = await fetch(API + '/api/exportar-finetuning/stats')
-    var j = await r.json()
-    if (!j.ok) throw new Error(j.error)
-    var d = j.data
-    var cor = d.total < 10 ? '#c62828' : d.total < 50 ? '#e65100' : '#1e7e34'
-    var html = '<div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center">'
-    html += '<div><span style="font-size:28px;font-weight:700;color:'+cor+'">'+d.total+'</span><br><span style="font-size:11px;color:var(--muted)">exemplos confirmados</span></div>'
-    Object.entries(d.por_tipo||{}).forEach(function(kv) { html += '<div><span style="font-size:20px;font-weight:600;color:var(--verde)">'+kv[1]+'</span><br><span style="font-size:11px;color:var(--muted)">'+kv[0]+'</span></div>' })
-    html += '</div>'
-    html += '<div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:8px;font-size:13px">'+d.recomendacao+'</div>'
-    if (d.pronto) html += '<div style="margin-top:8px;font-size:12px;color:var(--muted)">Para fazer o fine-tuning: exporte o JSONL → <a href="https://platform.openai.com/finetune" target="_blank" style="color:var(--verde)">platform.openai.com/finetune</a> → crie um novo job.</div>'
-    el.innerHTML = html
-  } catch(e) { el.innerHTML = '<span style="color:#c62828">Erro: '+e.message+'</span>' }
-}
-
-async function exportarFinetuning() {
-  var btn = document.getElementById('btnExportar')
-  btn.disabled = true; btn.textContent = '⏳ Exportando...'
-  try {
-    var r = await fetch(API + '/api/exportar-finetuning?minimo=1')
-    if (!r.ok) { var j = await r.json(); throw new Error(j.error||'Erro') }
-    var total = r.headers.get('X-Total-Exemplos')||'?'
-    var blob = await r.blob()
-    var url = URL.createObjectURL(blob)
-    var a = document.createElement('a'); a.href = url; a.download = 'finetuning_'+new Date().toISOString().substring(0,10)+'.jsonl'; a.click()
-    URL.revokeObjectURL(url)
-    btn.textContent = '✅ Exportado ('+total+' exemplos)'
-    setTimeout(function() { btn.disabled=false; btn.textContent='⬇️ Exportar JSONL' }, 3000)
-  } catch(e) { alert('Erro: '+e.message); btn.disabled=false; btn.textContent='⬇️ Exportar JSONL' }
-}
-
-
-function renderMovimentacoes(dados) {
-  var el = document.getElementById('movimentacoes')
-  if (!el) return
-  if (!dados || dados.length === 0) {
-    el.innerHTML = '<div class="hist-table-header"><h2>Movimentações Recentes</h2></div><div class="sem-dados">Nenhuma movimentação registrada ainda.</div>'
-    return
-  }
-  var LABEL = {entrada_compra:'Compra',saida_venda:'Venda',entrada_transferencia:'Transferência',saida_transferencia:'Transferência',saida_morte:'Morte',entrada_nascimento:'Nascimento',entrada_desmama:'Desmama',saida_desmama:'Desmama',pesagem:'Pesagem'}
-  var CLS = {entrada_compra:'mov-entrada',entrada_nascimento:'mov-entrada',entrada_desmama:'mov-entrada',entrada_transferencia:'mov-transf',saida_venda:'mov-saida',saida_morte:'mov-saida',saida_desmama:'mov-saida',saida_transferencia:'mov-transf',pesagem:'mov-peso'}
-  var linhas = dados.map(function(m) {
-    var tipo = LABEL[m.tipo] || m.tipo || '-'
-    var cls  = CLS[m.tipo] || 'mov-transf'
-    var data = m.data_mov ? new Date(m.data_mov + 'T12:00:00').toLocaleDateString('pt-BR') : '-'
-    var obs  = m.observacoes || ''
-    var cat  = (obs.match(/Cat: ([^|]+)/) || [])[1] || '-'
-    var resp = (obs.match(/Resp: ([^|]+)/) || [])[1] || ''
-    var orig = (obs.match(/Origem: ([^|]+)/) || [])[1] || ''
-    var dest = (obs.match(/Destino: ([^|]+)/) || [])[1] || ''
-    return '<tr>' +
-      '<td>' + data.trim() + '</td>' +
-      '<td><span class="mov-badge ' + cls + '">' + tipo + '</span></td>' +
-      '<td>' + (m.quantidade || '-') + '</td>' +
-      '<td>' + cat.trim() + '</td>' +
-      '<td style="font-size:11px">' + orig.trim() + (dest.trim() ? ' &rarr; ' + dest.trim() : '') + '</td>' +
-      '<td style="color:var(--muted);font-size:11px">' + resp.trim() + '</td>' +
-      '</tr>'
-  }).join('')
-  el.innerHTML = '<div class="hist-table-header"><h2>Movimentações Recentes <span style="font-size:11px;color:var(--muted);font-weight:400">— últimas 50</span></h2></div>' +
-    '<div style="overflow-x:auto"><table>' +
-    '<thead><tr><th>Data</th><th>Tipo</th><th>Qtd</th><th>Categoria</th><th>Origem / Destino</th><th>Responsável</th></tr></thead>' +
-    '<tbody>' + linhas + '</tbody></table></div>'
-}
-
-
-carregar()
-setInterval(carregar, 5 * 60 * 1000)
-
-// Atualizar classes de botões e mortalidade após render
-function atualizarEstilos() {
-  // Botões de filtro
-  ['todos','M','F'].forEach(f => {
-    const btn = document.getElementById('btn-' + f)
-    if (btn) btn.className = 'tab-btn' + (filtroCat === f ? ' active' : '')
-  })
-  // Cor da mortalidade no histórico
-  document.querySelectorAll('#td-mort').forEach(td => {
-    const val = parseFloat(td.textContent)
-    td.className = val > 2 ? 'mort-high' : val > 1 ? 'mort-warn' : 'mort-ok'
-  })
-  // Cor do KPI mortalidade
-  const kpiMort = document.querySelector('#kpi-mort-val') 
-  if (!kpiMort) {
-    const kpis = document.querySelectorAll('.kpi .valor')
-    kpis.forEach(el => {
-      if (el.parentElement.querySelector('.label')?.textContent === 'Mortalidade') {
-        const val = parseFloat(el.textContent)
-        el.style.color = val > 1 ? 'var(--red)' : 'var(--verde)'
+    data: { labels, datasets: [{ data: tipoData, backgroundColor: cores, borderRadius: 5, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 11 } } },
+        y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 }, callback: v => Math.round(v) } }
       }
-    })
-  }
+    }
+  })
+
+  // Gráfico M/F
+  const machos  = movs.filter(m => m.categoria && m.categoria.startsWith('1.')).reduce((s,m)=>s+(m.quantidade||0),0)
+  const femeas  = movs.filter(m => m.categoria && m.categoria.startsWith('2.')).reduce((s,m)=>s+(m.quantidade||0),0)
+  const mfTotal = machos + femeas || 1
+  if (chartMF) chartMF.destroy()
+  chartMF = new Chart(document.getElementById('chart-mf'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Machos','Fêmeas'],
+      datasets: [{ data: [machos, femeas], backgroundColor: ['#378ADD','#D4537E'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '72%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)}` } } }
+    }
+  })
+  document.getElementById('legend-mf').innerHTML = `
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:#378ADD;display:inline-block;"></span>Machos ${((machos/mfTotal)*100).toFixed(0)}%</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:#D4537E;display:inline-block;"></span>Fêmeas ${((femeas/mfTotal)*100).toFixed(0)}%</span>
+  `
+
+  // Lotes
+  await carregarLotes()
+  await carregarAlertas()
 }
 
+async function carregarLotes() {
+  const el = document.getElementById('lotes-list')
+  const lotes = await api('lotes', { fazenda: fazendaAtual })
+  document.getElementById('lotes-fazenda').textContent = fazendaAtual === 'Grupo Ricci' ? 'todas as fazendas' : fazendaAtual
+
+  if (!lotes?.length) { el.innerHTML = '<div class="empty">Nenhum lote encontrado</div>'; return }
+
+  const colors = ['#1D9E75','#378ADD','#7F77DD','#D4537E','#EF9F27','#E24B4A','#1D9E75']
+  const finalidades = { cria:'Cria', recria:'Recria', engorda:'Engorda', reproducao:'Reprodução', descarte:'Descarte', geral:'Geral' }
+  const movLotes = await api('movimentacoes', { fazenda: fazendaAtual })
+
+  const totalGlobal = lotes.reduce((s, l) => {
+    const movs = movLotes?.filter?.(m => m.lote_id === l.id) || []
+    const ent = movs.filter(m => ['nascimento','compra'].includes(m.tipo)).reduce((a,m)=>a+(m.quantidade||0),0)
+    const sai = movs.filter(m => ['morte','venda'].includes(m.tipo)).reduce((a,m)=>a+(m.quantidade||0),0)
+    return s + Math.max(0, ent - sai)
+  }, 0) || 1
+
+  el.innerHTML = lotes.slice(0, 6).map((l, i) => {
+    const movs = movLotes?.filter?.(m => m.lote_id === l.id) || []
+    const ent = movs.filter(m => ['nascimento','compra'].includes(m.tipo)).reduce((a,m)=>a+(m.quantidade||0),0)
+    const sai = movs.filter(m => ['morte','venda'].includes(m.tipo)).reduce((a,m)=>a+(m.quantidade||0),0)
+    const total = Math.max(0, ent - sai)
+    const pct = Math.round((total / totalGlobal) * 100)
+    const color = colors[i % colors.length]
+    const fn = l.fazendas?.nome || ''
+    return `
+      <div class="lote-row">
+        <div class="lote-left">
+          <div class="lote-dot" style="background:${color};"></div>
+          <div>
+            <div class="lote-name">${l.nome}</div>
+            <div class="lote-meta">${finalidades[l.finalidade] || l.finalidade || '—'}${fn && fazendaAtual === 'Grupo Ricci' ? ' · ' + fn : ''}</div>
+          </div>
+        </div>
+        <div class="lote-right">
+          <div class="lote-count">${fmt(total)}</div>
+          <div class="lote-trend" style="color:var(--subtle)">${pct}% do total</div>
+          <div class="bar-wrap" style="width:60px;">
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color};"></div></div>
+          </div>
+        </div>
+      </div>`
+  }).join('')
+}
+
+async function carregarAlertas() {
+  const alertas = await api('alertas')
+  const el = document.getElementById('alertas-list')
+  const count = alertas?.length || 0
+  document.getElementById('alertas-count').textContent = `${count} recente${count !== 1 ? 's' : ''}`
+  if (count > 0) document.getElementById('alerta-dot').style.display = 'inline-block'
+
+  if (!count) {
+    el.innerHTML = '<div class="empty">Nenhum alerta registrado<br><span style="font-size:11px;color:var(--subtle)">O agente analisa a cada 6 horas</span></div>'
+    return
+  }
+
+  const iconMap = { alerta:'w', info:'i', aviso:'i', critico:'d' }
+  const icons = { w:'⚠', i:'ℹ', d:'⛔', s:'✓' }
+  el.innerHTML = alertas.map(a => {
+    const cls = iconMap[a.tipo?.split('_')[0]] || 'i'
+    return `
+      <div class="alerta-row">
+        <div class="alerta-icon ${cls}">${icons[cls]}</div>
+        <div class="alerta-body">
+          <div class="alerta-text">${a.descricao || a.tipo}</div>
+          <div class="alerta-meta">${a.fazenda} · ${fmtDate(a.detectado_em)}</div>
+        </div>
+      </div>`
+  }).join('')
+
+  // Também preencher section de alertas
+  document.getElementById('alertas-full-list').innerHTML = alertas.map(a => {
+    const cls = iconMap[a.tipo?.split('_')[0]] || 'i'
+    return `
+      <div class="alerta-row" style="padding:14px 0;">
+        <div class="alerta-icon ${cls}" style="width:36px;height:36px;font-size:16px;">${icons[cls]}</div>
+        <div class="alerta-body">
+          <div class="alerta-text" style="font-size:13px;">${a.descricao || a.tipo}</div>
+          <div class="alerta-meta" style="margin-top:4px;">${a.fazenda} · ${fmtDate(a.detectado_em)} · ${a.resolvido ? '<span style="color:var(--green)">Resolvido</span>' : '<span style="color:var(--amber)">Em aberto</span>'}</div>
+        </div>
+      </div>`
+  }).join('')
+}
+
+async function carregarMovimentacoes() {
+  const tipo = document.getElementById('tipo-sel').value
+  const movs = await api('movimentacoes', { fazenda: fazendaAtual, tipo })
+  document.getElementById('movs-sub').textContent = `${movs?.length || 0} registros`
+
+  if (!movs?.length) {
+    document.getElementById('movs-body').innerHTML = '<tr><td colspan="6"><div class="empty">Nenhuma movimentação encontrada</div></td></tr>'
+    return
+  }
+  document.getElementById('movs-body').innerHTML = movs.map(m => `
+    <tr>
+      <td>${fmtDate(m.data_mov)}</td>
+      <td>${m.fazenda || '—'}</td>
+      <td><span class="pill ${tipoPill(m.tipo)}">${tipoLabel(m.tipo)}</span></td>
+      <td>${m.categoria || '—'}</td>
+      <td>${m.lotes?.nome || m.lote_nome || '—'}</td>
+      <td style="text-align:right; font-weight:500;">${fmt(m.quantidade)}</td>
+    </tr>`).join('')
+}
+
+function setFazenda(f) {
+  fazendaAtual = f
+  document.getElementById('page-title').textContent = f === 'Grupo Ricci' ? 'Todas as fazendas' : f
+  carregarDados()
+  if (document.getElementById('section-movimentacoes').style.display !== 'none') carregarMovimentacoes()
+}
+
+function highlightNav(btn) {
+  document.querySelectorAll('.nav-item').forEach(b => {
+    if (b.textContent.trim().startsWith('Todas') || b.textContent.trim().startsWith('Fazenda') || b.textContent.trim() === b.textContent.trim()) {
+      b.classList.remove('active')
+    }
+  })
+  btn.classList.add('active')
+}
+
+function showSection(name) {
+  ['dashboard','movimentacoes','alertas'].forEach(s => {
+    document.getElementById('section-' + s).style.display = s === name ? '' : 'none'
+  })
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'))
+  event.target.closest('.nav-item').classList.add('active')
+  if (name === 'movimentacoes') carregarMovimentacoes()
+  if (name === 'alertas') carregarAlertas()
+}
+
+carregarDados()
 </script>
 </body>
 </html>
