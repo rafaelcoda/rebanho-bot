@@ -179,31 +179,31 @@ async function enviarMenuInicial(de, usuario) {
   await enviarMenuNumerico(de, 'Olá' + nome + '! 👋 O que deseja registrar hoje?', ['Nascimentos','Mortes','Compras','Vendas','Troca de categoria','Fechamento mensal'])
 }
 
-// ─── Perguntar subdivisão, lote e tipo de animal ─────────────────────────────
+// ─── Perguntar Retiro, Lote e Tipo — menu cascata numerado ───────────────────
 async function perguntarLoteTipo(de, dados) {
   try {
     const fazObj = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
     if (fazObj) {
-      const { data: subs } = await getSupabase().from('subdivisoes').select('id,nome,tipo').eq('fazenda_id', fazObj.id).eq('ativo', true).order('nome')
-      if (subs && subs.length) {
-        const s = sessoes[de]; if (s) s.dados._subsMenu = subs
-        await enviarMenuNumerico(de, '📍 ' + fazObj.nome + ' — Em qual subdivisão?', subs.map(function(s) { return s.nome + ' (' + s.tipo + ')' }))
+      const { data: retiros } = await getSupabase().from('subdivisoes').select('id,nome,tipo').eq('fazenda_id', fazObj.id).eq('ativo', true).order('nome')
+      if (retiros && retiros.length) {
+        const s = sessoes[de]; if (s) s.dados._subsMenu = retiros
+        await enviarMenuNumerico(de, '📍 ' + fazObj.nome + ' — Em qual retiro?', retiros.map(function(r) { return r.nome + ' (' + r.tipo + ')' }))
         return
       }
     }
   } catch(e) {}
-  await enviarMensagem(de, 'Informe: *subdivisão*, *lote* e *tipo de animal*.\n\nEx: "Confinamento, Lote 3, Nelore"')
+  await enviarMensagem(de, 'Informe o *retiro*, *lote* e *tipo de animal*.\n\n_Ex: "Pasto 01, Lote 3, Nelore" · "Piquete 2, Lote Recria, Cruzado"_\n\n_Tipos: Nelore, Angus, Cruzado, Girolando, Outros_')
 }
 async function perguntarLoteAposSub(de, dados, fazendaId) {
   try {
     const lotes = await dbFazendas.listarLotes(fazendaId)
     if (lotes && lotes.length) {
       const s = sessoes[de]; if (s) s.dados._lotesMenu = lotes
-      await enviarMenuNumerico(de, 'Qual lote em *' + dados.subdivisao_nome + '*?', lotes.map(function(l) { return l.nome }), '_Ou digite o nome do lote._')
+      await enviarMenuNumerico(de, 'Qual lote no retiro *' + dados.subdivisao_nome + '*?', lotes.map(function(l) { return l.nome }), '_Ou digite o nome do lote._')
       return
     }
   } catch(e) {}
-  await enviarMensagem(de, 'Qual o *lote* e *tipo de animal*?\n\nEx: "Lote 3, Nelore"')
+  await enviarMensagem(de, 'Qual o *lote* e *tipo de animal*?\n\n_Ex: "Lote 3, Nelore"_')
 }
 
 // ─── Extrair subdivisão, lote e tipo de animal via GPT ──────────────────────
@@ -218,15 +218,15 @@ async function extrairLoteTipo(texto, lotesDisponiveis, subsDisponiveis) {
     const axios = require('axios')
 
     const subsStr = subsDisponiveis?.length
-      ? 'Subdivisões disponíveis: ' + subsDisponiveis.map(s => s.nome).join(', ')
-      : 'Subdivisões: Pasto 01, Pasto 02, Confinamento, Piquete 1, Piquete 2'
+      ? 'Retiros disponíveis: ' + subsDisponiveis.map(s => s.nome).join(', ')
+      : 'Retiros: Pasto 01, Pasto 02, Piquete 1, Piquete 2'
 
     const lotesStr = lotesDisponiveis?.length
       ? 'Lotes disponíveis: ' + lotesDisponiveis.map(l => l.nome).join(', ')
       : 'Lotes: Lote 1, Lote 2, Lote Engorda, Lote Recria, Lote Cria'
 
-    const prompt = `Extraia a subdivisão, o lote e o tipo de animal do texto a seguir.
-Hierarquia: Fazenda > Subdivisão (Pasto/Confinamento/Piquete) > Lote > Tipo de animal
+    const prompt = `Extraia o retiro, o lote e o tipo de animal do texto a seguir.
+Hierarquia: Fazenda > Retiro (Pasto/Piquete/Talhão) > Lote > Tipo de animal
 
 ${subsStr}
 ${lotesStr}
@@ -1770,7 +1770,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781814497', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781814958', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
