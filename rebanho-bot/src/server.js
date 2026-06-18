@@ -130,8 +130,28 @@ const supabase = new Proxy({}, {
 // ─── Menu cascata numerado ────────────────────────────────────────────────────
 async function enviarMenuNumerico(de, titulo, opcoes, rodape) {
   const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟']
-  const linhas = opcoes.map((o, i) => (emojis[i] || (i+1)+'.') + '  ' + o)
-  await enviarMensagem(de, '*' + titulo + '*\n\n' + linhas.join('\n') + '\n\n' + (rodape || '_Responda com o número._'))
+  const MAX = 1400
+  const BLOCO = 20
+
+  // Lista pequena — enviar tudo de uma vez
+  if (opcoes.length <= 10) {
+    const linhas = opcoes.map((o, i) => (emojis[i] || (i+1)+'.') + '  ' + o)
+    const msg = '*' + titulo + '*\n\n' + linhas.join('\n') + '\n\n' + (rodape || '_Responda com o número._')
+    if (msg.length <= MAX) { await enviarMensagem(de, msg); return }
+  }
+
+  // Lista grande — paginar em blocos de 20
+  const totalBlocos = Math.ceil(opcoes.length / BLOCO)
+  for (let i = 0; i < opcoes.length; i += BLOCO) {
+    const bloco = opcoes.slice(i, i + BLOCO)
+    const pagAtual = Math.floor(i / BLOCO) + 1
+    const linhas = bloco.map((o, j) => (i + j + 1) + '.  ' + o)
+    const cabecalho = pagAtual === 1 && titulo ? '*' + titulo + '*\n\n' : ''
+    const rod = pagAtual < totalBlocos
+      ? '_Parte ' + pagAtual + '/' + totalBlocos + ' — continue digitando o nome ou aguarde_'
+      : (rodape || '_Responda com o número._')
+    await enviarMensagem(de, cabecalho + linhas.join('\n') + '\n\n' + rod)
+  }
 }
 function parsearOpcao(texto, total) {
   const n = parseInt((texto || '').trim())
@@ -1888,7 +1908,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781822147', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781822438', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
