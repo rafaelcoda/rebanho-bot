@@ -1162,8 +1162,18 @@ async function tratarRespostaSessao(de, textoResposta, dados, etapa) {
   // Etapas de cadastro progressivo
   if (etapa.startsWith('cadastro_')) {
     const campo = etapa.replace('cadastro_', '')
-    const valor = (textoResposta || '').trim()
+    let valor = (textoResposta || '').trim()
     limparSessao(de)
+    // Para campo nome: extrair apenas o primeiro nome/sobrenome, ignorar transcrições longas
+    if (campo === 'nome') {
+      // Se muito longo, tentar extrair apenas o nome do início
+      if (valor.length > 40) {
+        const match = valor.match(/^([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+){0,3})/i)
+        valor = match ? match[1] : valor.substring(0, 30)
+      }
+      // Remover pontuação e caracteres estranhos
+      valor = valor.replace(/[.,!?;:]/g, '').trim()
+    }
     if (valor.length > 1) {
       await salvarCampoUsuario(de, campo, valor)
       const labels = { nome: 'Nome', funcao: 'Função', fazenda: 'Fazenda', lotes_cuida: 'Lotes' }
@@ -1779,7 +1789,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781817478', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781817912', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
