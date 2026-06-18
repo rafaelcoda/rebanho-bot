@@ -388,10 +388,21 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
             )
             return
           }
-          // Não achou — mostrar lista para selecionar
-          const s = sessoes[de]; if (s) s.dados._subsMenu = retiros
+          // Não achou — fazendas grandes: RAG puro. Pequenas: mostrar lista
+          const LIMITE_LISTA = 15
+          if (retiros.length > LIMITE_LISTA) {
+            await enviarMensagem(de,
+              '❓ Não encontrei *"' + resposta.trim() + '"* em *' + dados.fazenda + '*.' +
+              '\n\nTente o *código do pasto* (ex: `ITU10TP`, `ALI41TP`)' +
+              '\nou parte do nome (ex: `confinamento 3`, `pasto 41`)' +
+              '\n\n_Dica: o código está na planilha de pastos._'
+            )
+            return
+          }
+          // Fazendas pequenas (FRG=4, RIV=13): mostrar lista
+          const sLista = sessoes[de]; if (sLista) sLista.dados._subsMenu = retiros
           await enviarMenuNumerico(de,
-            '❓ Não encontrei *"' + resposta.trim() + '"*. Selecione o pasto:',
+            '❓ Não encontrei *"' + resposta.trim() + '"*. Selecione:',
             retiros.map(function(r) { return r.nome + (r.area_ha ? ' (' + r.area_ha + ' ha)' : '') })
           )
           return
@@ -1921,7 +1932,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781822876', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781823113', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
