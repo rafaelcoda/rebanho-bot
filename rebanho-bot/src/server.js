@@ -664,6 +664,11 @@ async function salvarFluxoGuiado(de, dados) {
     }
     for (var i = 0; i < movs.length; i++) {
       const mov = movs[i]
+      // Resolver categoria pelo código se vier null
+      const catFinal = mov.categoria || mov.categoria_item || null
+      const codMatch = catFinal ? catFinal.match(/\d+\.\d+/) : null
+      const catNome = codMatch ? (TODAS_CATS.find(function(c) { return c.startsWith(codMatch[0]) }) || catFinal) : catFinal
+
       const movCompleto = Object.assign({}, mov, {
         tipo: dados.tipo_interno,
         fazenda: dados.fazenda || null,
@@ -676,6 +681,8 @@ async function salvarFluxoGuiado(de, dados) {
         peso: dados.peso_total_kg || mov.peso || null,
         peso_total_kg: dados.peso_total_kg || null,
         peso_medio_kg: dados.peso_medio_kg || null,
+        categoria: catNome || mov.categoria || null,
+        categoria_item: catNome || mov.categoria_item || null,
       })
       await salvarEResponderMovimentacao(de, movCompleto)
     }
@@ -1770,7 +1777,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781814958', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781816407', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
