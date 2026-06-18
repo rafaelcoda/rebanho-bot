@@ -388,8 +388,12 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       if (_it !== null) {
         var _nd3 = Object.assign({}, dados, { tipo_animal: _tipos[_it] })
         var _cats3 = CATEGORIAS_POR_TIPO[_nd3.tipo_guiado] || []
-        setSessao(de, _nd3, 'categorias')
-        await enviarMensagem(de, '✅ Ok!\n\nAgora informe as *quantidades por categoria* para *' + _nd3.label_tipo + '*:\n\n' + _cats3.map(function(c) { return '• ' + c }).join('\n') + '\n\n_Ex: "50 garrotes 1.3, 30 bois 1.6" ou áudio._')
+        setSessao(de, _nd3, 'peso_lote')
+        await enviarMensagem(de,
+          '✅ Ok! *' + (_nd3.lote_nome || 'Lote') + '* — *' + _tipos[_it] + '*\n\n' +
+          '⚖️ Qual o *peso total* do lote em kg?\n\n' +
+          '_Ex: "6.500 kg" · "450 arrobas" · ou "pular" para continuar sem peso_'
+        )
         return
       }
     }
@@ -415,11 +419,11 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       })
       const cats = CATEGORIAS_POR_TIPO[dados.tipo_guiado] || []
       const listaCats = cats.map(function(c) { return '• ' + c }).join('\n')
-      setSessao(de, novosDados, 'categorias')
+      setSessao(de, novosDados, 'peso_lote')
       await enviarMensagem(de,
-        '✅ Ok!\n\n' +
-        'Agora informe as *quantidades por categoria* para *' + dados.label_tipo + '*:\n\n' +
-        listaCats + '\n\n_Ex: "50 garrotes 1.3, 30 bois 1.6" ou áudio falando as quantidades._'
+        '✅ Ok! *' + (novosDados.lote_nome || 'Lote') + '* — *' + (novosDados.tipo_animal || dados.tipo_animal || '') + '*\n\n' +
+        '⚖️ Qual o *peso total* do lote em kg?\n\n' +
+        '_Ex: "6.500 kg" · "450 arrobas" · ou "pular" para continuar sem peso_'
       )
     } catch(e) {
       await enviarMensagem(de, '_Não entendi. Informe o lote e tipo de animal, ex: "Lote Engorda, Nelore"._')
@@ -468,11 +472,22 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
 
   if (etapa === 'peso_lote') {
     await enviarMensagem(de, '_Processando peso..._')
+    const cats = CATEGORIAS_POR_TIPO[dados.tipo_guiado] || []
+    const listaCats = cats.map(function(c) { return '• ' + c }).join('\n')
+    const pular = ['pular','skip','sem peso','nao','não','n'].includes(respostaLower.trim())
+    if (pular) {
+      setSessao(de, dados, 'categorias')
+      await enviarMensagem(de,
+        'Agora informe as *quantidades por categoria* para *' + dados.label_tipo + '*:\n\n' +
+        listaCats + '\n\n_Ex: "50 garrotes 1.3, 30 bois 1.6" ou áudio._'
+      )
+      return
+    }
     const pesoExtraido = await extrairPeso(resposta)
     if (!pesoExtraido.peso_total_kg && !pesoExtraido.peso_medio_kg) {
       await enviarMensagem(de,
-        '⚠️ Não identifiquei o peso. *Peso obrigatório* para ' + dados.label_tipo + '.\n\n' +
-        'Tente novamente. Ex: _"450 arrobas"_, _"6.750 kg"_ ou _"15 arrobas por cabeça"_'
+        '⚠️ Não identifiquei o peso.\n\n' +
+        'Tente novamente. Ex: _"6.500 kg"_, _"450 arrobas"_ — ou responda *pular* para continuar sem peso.'
       )
       return
     }
@@ -481,8 +496,12 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       peso_medio_kg: pesoExtraido.peso_medio_kg,
       peso_unidade: pesoExtraido.unidade_original
     })
-    setSessao(de, novosDados3, 'confirmacao_guiada')
-    await enviarMensagem(de, gerarResumoGuiado(novosDados3))
+    setSessao(de, novosDados3, 'categorias')
+    await enviarMensagem(de,
+      '✅ Peso registrado: *' + (pesoExtraido.peso_total_kg || 0).toLocaleString('pt-BR') + ' kg*\n\n' +
+      'Agora informe as *quantidades por categoria* para *' + dados.label_tipo + '*:\n\n' +
+      listaCats + '\n\n_Ex: "52 garrotes 1.3, 10 bois 1.5" ou áudio._'
+    )
     return
   }
 
@@ -496,6 +515,11 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
     if (['não','nao','n','errado','cancela','cancelar'].includes(respostaLower)) {
       limparSessao(de)
       await enviarMensagem(de, '_Ok, operação cancelada. Envie uma nova mensagem para recomeçar._')
+      return
+    }
+    // Detectar "faça a média" ou "calcular média" — não reprocessar categorias
+    if (respostaLower.includes('média') || respostaLower.includes('media') || respostaLower.includes('calcul')) {
+      await enviarMensagem(de, gerarResumoGuiado(dados))
       return
     }
     // Detectar intenção de informar peso
@@ -560,9 +584,13 @@ function gerarResumoGuiado(dados) {
     if (zeros.length) linhas += '\n\n⚠️ *Não informado (= 0):*\n' + zeros.map(function(z) { return '  • ' + z }).join('\n')
   }
 
+  const qtdTotal = movs.reduce(function(s, m) { return s + (m.quantidade || 0) }, 0)
+  const pesoMedioCalc = (dados.peso_total_kg && qtdTotal > 0)
+    ? Math.round(dados.peso_total_kg / qtdTotal)
+    : dados.peso_medio_kg || null
   const pesoLine = dados.peso_total_kg
     ? '\n⚖️ *Peso total:* ' + dados.peso_total_kg.toLocaleString('pt-BR') + ' kg' +
-      (dados.peso_medio_kg ? ' | *Médio:* ' + dados.peso_medio_kg + ' kg/cab' : '')
+      (pesoMedioCalc ? ' | *Médio:* ' + pesoMedioCalc.toLocaleString('pt-BR') + ' kg/cab' : '')
     : ''
 
   return '📋 *Confira antes de salvar:*\n\n' +
@@ -1696,7 +1724,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781795540', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781796676', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
