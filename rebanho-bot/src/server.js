@@ -13,7 +13,7 @@ function getAgenteLogs() {
   return _agenteLogs
 }
 
-// v1781741320
+// v1781741416
 
 const express = require('express')
 const twilio = require('twilio')
@@ -116,6 +116,17 @@ function eSaudacao(texto) {
 // ─── Fluxo guiado: enviar menu inicial ───────────────────────────────────────
 async function enviarMenuInicial(de, usuario) {
   const nome = usuario && usuario.nome ? ', ' + usuario.nome.split(' ')[0] : ''
+  try {
+    const { data: fazendas } = await getSupabase().from('fazendas').select('id,nome').eq('ativo', true).order('nome')
+    if (fazendas && fazendas.length) {
+      setSessao(de, { _guiado: true, _fazendasMenu: fazendas }, 'menu_inicial')
+      await enviarMenuNumerico(de,
+        'Olá' + nome + '! 👋 Em qual fazenda ocorreu?',
+        fazendas.map(function(f) { return f.nome })
+      )
+      return
+    }
+  } catch(e) {}
   setSessao(de, { _guiado: true }, 'menu_inicial')
   await enviarMenuNumerico(de, 'Olá' + nome + '! 👋 O que deseja registrar hoje?', ['Nascimentos','Mortes','Compras','Vendas','Troca de categoria','Fechamento mensal'])
 }
@@ -224,49 +235,68 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
   const respostaLower = resposta.toLowerCase()
 
   if (etapa === 'menu_inicial') {
-    // Normalizar número por extenso → dígito (peão pode falar "quatro" em vez de "4")
-    const extensoMap = {
-      'um': '1', 'uma': '1', 'one': '1',
-      'dois': '2', 'duas': '2', 'two': '2',
-      'três': '3', 'tres': '3', 'three': '3',
-      'quatro': '4', 'four': '4',
-      'cinco': '5', 'five': '5',
-      'seis': '6', 'six': '6',
-      // nomes das opções (peão pode falar o nome em vez do número)
-      'nascimento': '1', 'nascimentos': '1',
-      'morte': '2', 'mortes': '2',
-      'compra': '3', 'compras': '3', 'compre': '3', 'comprei': '3', 'comprar': '3',
-      'venda': '4', 'vendas': '4', 'vendi': '4',
-      'troca': '5', 'trocar': '5',
-      'mapa': '6', 'fechamento': '6',
-    }
-    // Tentar match exato primeiro, depois buscar número/extenso em qualquer parte da frase
-    const respostaClean = respostaLower.trim().replace(/[.,!?]+$/, '').trim()
-    let respostaNorm = extensoMap[respostaClean] || respostaClean
-    // Se não encontrou, buscar palavra-chave numérica em qualquer parte da transcrição
-    if (!extensoMap[respostaClean] && !respostaClean.match(/^[1-6]$/)) {
-      for (const [key, val] of Object.entries(extensoMap)) {
-        if (respostaLower.includes(key)) { respostaNorm = val; break }
+    const _fm  = dados._fazendasMenu   // step 1: lista de fazendas
+    const _es  = dados._etapaMenu      // 'fazenda' | 'entrada_saida' | 'tipo'
+
+    // ── Step 1: selecionar fazenda ──────────────────────────────────────────
+    if (!dados.fazenda && _fm) {
+      const idx = parsearOpcao(resposta, _fm.length)
+      if (idx === null) {
+        await enviarMenuNumerico(de, 'Responda com o número da fazenda:', _fm.map(function(f) { return f.nome }))
+        return
       }
-      // Buscar dígito solto na frase
-      const digitMatch = respostaClean.match(/\b([1-6])\b/)
-      if (digitMatch) respostaNorm = digitMatch[1]
+      const faz = _fm[idx]
+      const nd = Object.assign({}, dados, { fazenda: faz.nome, fazenda_id: faz.id, _fazendasMenu: null, _etapaMenu: 'entrada_saida' })
+      setSessao(de, nd, 'menu_inicial')
+      await enviarMenuNumerico(de, '📍 *' + faz.nome + '*\n\nEntrada ou saída?', ['Entrada  (nascimento / compra)', 'Saída  (morte / abate / venda)', 'Transferência / Troca de categoria'])
+      return
     }
-    const opcao = MENU_TIPO_MAP[respostaNorm]
-    if (!opcao) {
+
+    // ── Step 2: entrada ou saída ────────────────────────────────────────────
+    if (_es === 'entrada_saida') {
+      const idx = parsearOpcao(resposta, 3)
+      if (idx === null) {
+        await enviarMenuNumerico(de, 'Responda com o número:', ['Entrada  (nascimento / compra)', 'Saída  (morte / abate / venda)', 'Transferência / Troca de categoria'])
+        return
+      }
+      const nd = Object.assign({}, dados, { _etapaMenu: 'tipo', _tipoGrupo: idx === 0 ? 'entrada' : idx === 1 ? 'saida' : 'neutro' })
+      setSessao(de, nd, 'menu_inicial')
+      if (idx === 0) {
+        await enviarMenuNumerico(de, 'Qual tipo de entrada?', ['Nascimento', 'Compra'])
+      } else if (idx === 1) {
+        await enviarMenuNumerico(de, 'Qual tipo de saída?', ['Morte', 'Abate', 'Venda'])
+      } else {
+        await enviarMenuNumerico(de, 'Qual operação?', ['Transferência entre lotes', 'Troca de categoria', 'Desmama'])
+      }
+      return
+    }
+
+    // ── Step 3: tipo específico ─────────────────────────────────────────────
+    if (_es === 'tipo') {
+      const grupo = dados._tipoGrupo
+      const mapEntrada  = [{tipo:'nascimento', label:'Nascimentos'}, {tipo:'compra', label:'Compras'}]
+      const mapSaida    = [{tipo:'morte', label:'Mortes'}, {tipo:'abate', label:'Abates'}, {tipo:'venda', label:'Vendas'}]
+      const mapNeutro   = [{tipo:'transferencia', label:'Transferência'}, {tipo:'troca_categoria', label:'Troca de categoria'}, {tipo:'desmama', label:'Desmama'}]
+      const lista = grupo === 'entrada' ? mapEntrada : grupo === 'saida' ? mapSaida : mapNeutro
+      const idx = parsearOpcao(resposta, lista.length)
+      if (idx === null) {
+        await enviarMenuNumerico(de, 'Responda com o número:', lista.map(function(o) { return o.label }))
+        return
+      }
+      const opcao = lista[idx]
+      const nd = Object.assign({}, dados, {
+        _etapaMenu: null, _tipoGrupo: null, _fazendasMenu: null,
+        tipo_guiado: opcao.tipo, tipo_interno: opcao.tipo, label_tipo: opcao.label, _guiado: true
+      })
+      setSessao(de, nd, 'local_data')
       await enviarMensagem(de,
-        '_Não entendi. Responda com o número da opção:_\n\n' +
-        '1️⃣  Nascimentos\n2️⃣  Mortes\n3️⃣  Compras\n4️⃣  Vendas\n5️⃣  Troca de categoria\n6️⃣  Fechamento mensal'
+        '✅ *' + opcao.label + '* — *' + nd.fazenda + '*\n\nQual a *data*?\n_Ex: hoje · dia 17 · 17 de junho_'
       )
       return
     }
-    const novosDados = { _guiado: true, tipo_guiado: opcao.tipo, tipo_interno: opcao.interno, label_tipo: opcao.label }
-    setSessao(de, novosDados, 'local_data')
-    await enviarMensagem(de,
-      '📍 *' + opcao.label + '* selecionado.\n\n' +
-      'Em qual *fazenda/retiro* ocorreu e qual a *data*?\n\n' +
-      '_Pode enviar um áudio ou digitar. Ex: Retiro Aliança, dia 10 de junho de 2026_'
-    )
+
+    // Fallback
+    await enviarMenuNumerico(de, 'Responda com o número da fazenda:', (dados._fazendasMenu || []).map(function(f) { return f.nome }))
     return
   }
 
@@ -1616,7 +1646,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781741320', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781741416', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
