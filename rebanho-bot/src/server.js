@@ -39,13 +39,29 @@ const MENU_TIPO_MAP = {
 }
 
 // Categorias relevantes por tipo de movimentação
+// Categorias de manejo — Grupo Ricci (atualizadas)
+const TODAS_CATS = [
+  '1.1 Bezerros 0-2m','1.2 Bezerros 3-8m','1.3 Garrotes 9-12m','1.4 Garrotes 13-24m',
+  '1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO',
+  '2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m',
+  '2.4 Novilhas 13-24m','2.5 Novilhas 25-36m',
+  '2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'
+]
+const CATS_NASCIMENTO = ['1.1 Bezerros 0-2m','2.1 Bezerras 0-2m']
+const CATS_ABATE     = ['1.5 Bois 25-36m','1.6 Bois acima 36m','2.6 Vacas solteiras','2.7 Vacas paridas']
+
 const CATEGORIAS_POR_TIPO = {
-  nascimento: ['1.1 Bezerros 0-8m', '2.1 Bezerras 0-2m'],
-  morte:      ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'],
-  compra:     ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'],
-  venda:      ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'],
-  troca:      ['1.1 Bezerros 0-8m','1.2 Bezerros 8-12m','1.3 Garrotes 13-24m','1.4 Garrotes 25-36m','1.5 Bois 25-36m','1.6 Bois acima 36m','1.7 Touros PO','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m','2.3 Bezerras 9-12m','2.4 Novilhas 13-24m','2.5 Novilhas 25-36m','2.6 Vacas solteiras','2.7 Vacas paridas','2.8 Vacas prenhas'],
-  mapa:       ['1.1','1.2','1.3','1.4','1.5','1.6','1.7','2.1','2.2','2.3','2.4','2.5','2.6','2.7','2.8'],
+  nascimento:      CATS_NASCIMENTO,
+  morte:           TODAS_CATS,
+  compra:          TODAS_CATS,
+  venda:           TODAS_CATS,
+  abate:           CATS_ABATE,
+  troca_categoria: TODAS_CATS,
+  transferencia:   TODAS_CATS,
+  desmama:         ['1.1 Bezerros 0-2m','1.2 Bezerros 3-8m','2.1 Bezerras 0-2m','2.2 Bezerras 3-8m'],
+  fechamento:      TODAS_CATS,
+  troca:           TODAS_CATS,
+  mapa:            ['1.1','1.2','1.3','1.4','1.5','1.6','1.7','2.1','2.2','2.3','2.4','2.5','2.6','2.7','2.8'],
 }
 let _rag = null
 function getRag() { if (!_rag) _rag = require('./rag'); return _rag }
@@ -1656,7 +1672,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781794973', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781795012', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
