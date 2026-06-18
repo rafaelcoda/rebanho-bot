@@ -1779,7 +1779,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781817371', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781817478', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
@@ -1974,7 +1974,8 @@ app.get('/api/dashboard/movimentacoes', async (req, res) => {
     console.log('[Dashboard] movimentacoes:', { fazenda, desde, tipo })
     let q = getSbDash().from('movimentacoes_lote').select('id,fazenda,tipo,categoria,quantidade,data_mov,lote_id').order('data_mov', { ascending: false }).limit(200)
     if (desde) q = q.gte('data_mov', desde)
-    if (fazenda && fazenda !== 'Grupo Ricci') q = q.eq('fazenda', fazenda)
+    // 'Grupo Ricci' = grupo econômico = todas as fazendas, não filtrar
+    if (fazenda && fazenda !== 'Grupo Ricci' && fazenda !== 'todos') q = q.eq('fazenda', fazenda)
     if (tipo) q = q.eq('tipo', tipo)
     const { data, error } = await q
     if (error) { console.log('[Dashboard] erro:', error); return res.status(500).json({ error: error.message }) }
