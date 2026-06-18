@@ -498,6 +498,25 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       await enviarMensagem(de, '_Ok, operação cancelada. Envie uma nova mensagem para recomeçar._')
       return
     }
+    // Detectar intenção de informar peso
+    if (respostaLower.includes('peso') || respostaLower.includes('arroba') || respostaLower.includes('kg') || respostaLower.match(/\d+\s*(kg|@|arroba)/i)) {
+      if (respostaLower.includes('informar') || respostaLower.includes('quero') || respostaLower.includes('adicionar') || respostaLower.includes('incluir')) {
+        setSessao(de, dados, 'peso_lote')
+        await enviarMensagem(de,
+          '⚖️ Informe o *peso total* do lote:\\n\\n' +
+          '_Ex: "6.500 kg" · "450 arrobas" · "peso médio 15 arrobas por cabeça"_'
+        )
+        return
+      }
+      // Tentar extrair peso direto
+      const pesoDir = await extrairPeso(resposta)
+      if (pesoDir && pesoDir.peso_total_kg) {
+        const nd = Object.assign({}, dados, { peso_total_kg: pesoDir.peso_total_kg, peso_medio_kg: pesoDir.peso_medio_kg })
+        setSessao(de, nd, 'confirmacao_guiada')
+        await enviarMensagem(de, gerarResumoGuiado(nd))
+        return
+      }
+    }
     if (resposta.length > 5) {
       await enviarMensagem(de, '_Aplicando correção..._')
       const correcao = await extrairMovimentacaoMultipla(resposta + ' (tipo: ' + dados.label_tipo + ')')
@@ -506,7 +525,7 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       await enviarMensagem(de, gerarResumoGuiado(dadosCorrigidos))
       return
     }
-    await enviarMensagem(de, '_Responda *sim* para salvar ou *não* para cancelar._')
+    await enviarMensagem(de, '_Responda *sim* para salvar, *não* para cancelar, ou informe o peso do lote._')
     return
   }
 }
@@ -526,8 +545,13 @@ function gerarResumoGuiado(dados) {
     const zeros = movs.filter(function(c) { return !c.existencia_atual || c.existencia_atual === 0 })
     if (zeros.length) linhas += '\n\n⚠️ *Sem registro (= 0):*\n' + zeros.map(function(z) { return '  • ' + z.item + ' ' + z.discriminacao }).join('\n')
   } else {
+    // Lookup por código para garantir nome correto
+    const catMap = {}
+    TODAS_CATS.forEach(function(c) { const p = c.split(' '); catMap[p[0]] = c.substring(p[0].length+1) })
     linhas = movs.map(function(m) {
-      return '  • ' + (m.categoria || m.categoria_item || '—') + ': ' + (m.quantidade || 0)
+      const cod = (m.categoria || m.categoria_item || '').match(/\d+\.\d+/)
+      const nomecat = cod ? (catMap[cod[0]] || m.categoria || m.categoria_item || '—') : (m.categoria || m.categoria_item || '—')
+      return '  • ' + (cod ? cod[0] + ' ' + nomecat : nomecat) + ': ' + (m.quantidade || 0)
     }).join('\n') || '  (nenhuma quantidade identificada)'
     const categoriasInformadas = movs.map(function(m) { return (m.categoria || '').toLowerCase() })
     const zeros = cats.filter(function(c) {
@@ -1672,7 +1696,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781795012', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781795540', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
