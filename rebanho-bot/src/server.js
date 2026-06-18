@@ -588,8 +588,20 @@ function gerarResumoGuiado(dados) {
   const pesoMedioCalc = (dados.peso_total_kg && qtdTotal > 0)
     ? Math.round(dados.peso_total_kg / qtdTotal)
     : dados.peso_medio_kg || null
-  const arrobasTotal = dados.peso_total_kg ? (dados.peso_total_kg / 15).toFixed(1) : null
-  const arrobasMedia = pesoMedioCalc ? (pesoMedioCalc / 15).toFixed(2) : null
+
+  // Fator de conversão arroba: bezerros/bezerras = 30kg/@, demais = 15kg/@
+  function kgParaArrobas(kg, catNome) {
+    if (!kg) return null
+    const ehBezerro = catNome && (catNome.toLowerCase().includes('bezerra') || catNome.toLowerCase().includes('bezerro'))
+    const fator = ehBezerro ? 30 : 15
+    return (kg / fator).toFixed(1)
+  }
+
+  // Determinar categoria predominante do lote para conversão do peso total
+  const catPredominante = movs.length === 1 ? (movs[0].categoria || movs[0].categoria_item || '') : ''
+  const arrobasTotal = dados.peso_total_kg ? kgParaArrobas(dados.peso_total_kg, catPredominante) : null
+  const arrobasMedia = pesoMedioCalc ? kgParaArrobas(pesoMedioCalc, catPredominante) : null
+
   const pesoLine = dados.peso_total_kg
     ? '\n⚖️ *Peso total:* ' + dados.peso_total_kg.toLocaleString('pt-BR') + ' kg (' + arrobasTotal + '@)' +
       (pesoMedioCalc ? ' | *Médio:* ' + pesoMedioCalc.toLocaleString('pt-BR') + ' kg/cab (' + arrobasMedia + '@)' : '')
@@ -1726,7 +1738,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781797066', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781797219', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
