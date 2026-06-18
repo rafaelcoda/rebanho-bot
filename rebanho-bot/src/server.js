@@ -303,12 +303,22 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
   if (etapa === 'local_data') {
     await enviarMensagem(de, '_Processando local e data..._')
     try {
-      const extraido = await extrairDadosRebanho(resposta)
-      // Resolver nome da fazenda para o nome oficial do banco
-      let fazendaNome = extraido.fazenda || dados.fazenda || null
-      if (fazendaNome) {
+      // Resolver "hoje" / "ontem" antes de chamar o GPT
+      const agora = new Date()
+      let respostaData = resposta
+      const rLower = (resposta || '').toLowerCase().trim()
+      if (rLower === 'hoje' || rLower === 'today') {
+        respostaData = agora.getDate() + ' de ' + ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][agora.getMonth()] + ' de ' + agora.getFullYear()
+      } else if (rLower === 'ontem' || rLower === 'yesterday') {
+        const ontem = new Date(agora); ontem.setDate(ontem.getDate() - 1)
+        respostaData = ontem.getDate() + ' de ' + ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'][ontem.getMonth()] + ' de ' + ontem.getFullYear()
+      }
+      const extraido = await extrairDadosRebanho(respostaData)
+      // Manter fazenda escolhida no menu — não sobrescrever com extração do GPT
+      let fazendaNome = dados.fazenda || extraido.fazenda || null
+      if (!dados.fazenda && extraido.fazenda) {
         try {
-          const fazObj = await dbFazendas.resolverFazenda(fazendaNome)
+          const fazObj = await dbFazendas.resolverFazenda(extraido.fazenda)
           if (fazObj) fazendaNome = fazObj.nome
         } catch(e) {}
       }
@@ -517,7 +527,7 @@ function gerarResumoGuiado(dados) {
 
   return '📋 *Confira antes de salvar:*\n\n' +
     '📌 *Tipo:* ' + dados.label_tipo + '\n' +
-    '📍 *Local:* ' + (dados.fazenda || 'Grupo Ricci') +
+    '📍 *Local:* ' + (dados.fazenda || '—') +
       (dados.subdivisao_nome ? ' › ' + dados.subdivisao_nome : '') +
       (dados.lote_nome ? ' › ' + dados.lote_nome : '') + '\n' +
     '📅 *Data:* ' + periodo +
@@ -542,7 +552,7 @@ async function salvarFluxoGuiado(de, dados) {
       const mov = movs[i]
       const movCompleto = Object.assign({}, mov, {
         tipo: dados.tipo_interno,
-        fazenda: dados.fazenda || 'Grupo Ricci',
+        fazenda: dados.fazenda || null,
         subdivisao_nome: dados.subdivisao_nome || null,
         lote_nome: dados.lote_nome || null,
         tipo_animal: dados.tipo_animal || null,
@@ -1646,7 +1656,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781741612', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781741921', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
