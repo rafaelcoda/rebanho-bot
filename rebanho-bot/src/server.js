@@ -594,61 +594,62 @@ function gerarResumoGuiado(dados) {
   const movs = dados._movimentacoesGuiadas || []
   const cats = CATEGORIAS_POR_TIPO[dados.tipo_guiado] || []
 
-  var linhas = ''
-  if (dados.tipo_guiado === 'mapa') {
-    linhas = movs.filter(function(c) { return c.existencia_atual > 0 })
-      .map(function(c) { return '  • ' + c.item + ' ' + c.discriminacao + ': ' + c.existencia_atual }).join('\n')
-    const zeros = movs.filter(function(c) { return !c.existencia_atual || c.existencia_atual === 0 })
-    if (zeros.length) linhas += '\n\n⚠️ *Sem registro (= 0):*\n' + zeros.map(function(z) { return '  • ' + z.item + ' ' + z.discriminacao }).join('\n')
-  } else {
-    // Lookup por código para garantir nome correto
-    const catMap = {}
-    TODAS_CATS.forEach(function(c) { const p = c.split(' '); catMap[p[0]] = c.substring(p[0].length+1) })
-    linhas = movs.map(function(m) {
-      const cod = (m.categoria || m.categoria_item || '').match(/\d+\.\d+/)
-      const nomecat = cod ? (catMap[cod[0]] || m.categoria || m.categoria_item || '—') : (m.categoria || m.categoria_item || '—')
-      return '  • ' + (cod ? cod[0] + ' ' + nomecat : nomecat) + ': ' + (m.quantidade || 0)
-    }).join('\n') || '  (nenhuma quantidade identificada)'
-    const categoriasInformadas = movs.map(function(m) { return (m.categoria || '').toLowerCase() })
-    const zeros = cats.filter(function(c) {
-      return !categoriasInformadas.some(function(ci) { return c.toLowerCase().includes(ci.split(' ')[0].toLowerCase()) })
-    })
-    if (zeros.length) linhas += '\n\n⚠️ *Não informado (= 0):*\n' + zeros.map(function(z) { return '  • ' + z }).join('\n')
-  }
+  // Lookup por código para garantir nome correto
+  const catMap = {}
+  TODAS_CATS.forEach(function(c) { const p = c.split(' '); catMap[p[0]] = c.substring(p[0].length+1) })
 
   const qtdTotal = movs.reduce(function(s, m) { return s + (m.quantidade || 0) }, 0)
   const pesoMedioCalc = (dados.peso_total_kg && qtdTotal > 0)
     ? Math.round(dados.peso_total_kg / qtdTotal)
     : dados.peso_medio_kg || null
 
-  // Fator de conversão arroba: bezerros/bezerras = 30kg/@, demais = 15kg/@
   function kgParaArrobas(kg, catNome) {
     if (!kg) return null
     const ehBezerro = catNome && (catNome.toLowerCase().includes('bezerra') || catNome.toLowerCase().includes('bezerro'))
-    const fator = ehBezerro ? 30 : 15
-    return (kg / fator).toFixed(1)
+    return (kg / (ehBezerro ? 30 : 15)).toFixed(1)
   }
-
-  // Determinar categoria predominante do lote para conversão do peso total
   const catPredominante = movs.length === 1 ? (movs[0].categoria || movs[0].categoria_item || '') : ''
   const arrobasTotal = dados.peso_total_kg ? kgParaArrobas(dados.peso_total_kg, catPredominante) : null
   const arrobasMedia = pesoMedioCalc ? kgParaArrobas(pesoMedioCalc, catPredominante) : null
 
-  const pesoLine = dados.peso_total_kg
-    ? '\n⚖️ *Peso total:* ' + dados.peso_total_kg.toLocaleString('pt-BR') + ' kg (' + arrobasTotal + '@)' +
-      (pesoMedioCalc ? ' | *Médio:* ' + pesoMedioCalc.toLocaleString('pt-BR') + ' kg/cab (' + arrobasMedia + '@)' : '')
-    : ''
+  // ── Categorias ──────────────────────────────────────────────────────────────
+  var linhaCats = ''
+  if (dados.tipo_guiado === 'mapa') {
+    linhaCats = movs.filter(function(c) { return c.existencia_atual > 0 })
+      .map(function(c) { return '  [' + c.item + '] ' + c.discriminacao + ': ' + c.existencia_atual }).join('\n')
+  } else {
+    linhaCats = movs.map(function(m) {
+      const cod = (m.categoria || m.categoria_item || '').match(/\d+\.\d+/)
+      const nomecat = cod ? (catMap[cod[0]] || m.categoria || m.categoria_item || '—') : (m.categoria || m.categoria_item || '—')
+      return '  [' + (cod ? cod[0] : '?') + '] ' + nomecat + ': ' + (m.quantidade || 0) + ' cab'
+    }).join('\n') || '  —'
+  }
 
-  console.log('[resumo] fazenda:', dados.fazenda, '| sub:', dados.subdivisao_nome, '| lote:', dados.lote_nome, '| tipo_animal:', dados.tipo_animal)
-  return '📋 *Confira antes de salvar:*\n\n' +
-    '📌 *Tipo:* ' + dados.label_tipo + '\n' +
-    '📍 *Local:* ' + (dados.fazenda || '—') +
-      (dados.subdivisao_nome ? ' › ' + dados.subdivisao_nome : '') +
-      (dados.lote_nome ? ' › ' + dados.lote_nome : '') + '\n' +
-    (dados.tipo_animal ? '🐄 *Animal:* ' + dados.tipo_animal + '\n' : '') +
-    '📅 *Data:* ' + periodo +
-    pesoLine + '\n\n*Por categoria:*\n' + (linhas || '  —') + '\n\n' +
-    'Está correto? Responda *sim* para salvar, *não* para cancelar ou informe o peso do lote.'
+  // ── Layout 3 — Card estruturado ─────────────────────────────────────────────
+  console.log('[resumo] fazenda:', dados.fazenda, '| sub:', dados.subdivisao_nome, '| lote:', dados.lote_nome, '| animal:', dados.tipo_animal)
+
+  const linhaLocal = [dados.fazenda, dados.subdivisao_nome, dados.lote_nome].filter(Boolean).join(' › ')
+
+  let msg = '📋 *Confira antes de salvar*\n'
+  msg += '━━━━━━━━━━━━━━━━━━━\n'
+  msg += '🏷️  *' + dados.label_tipo + '*'
+  if (dados.tipo_animal) msg += '  ·  ' + dados.tipo_animal
+  msg += '  ·  ' + periodo + '\n'
+  msg += '━━━━━━━━━━━━━━━━━━━\n'
+  msg += '📍 ' + linhaLocal + '\n'
+  if (dados.peso_total_kg) {
+    msg += '━━━━━━━━━━━━━━━━━━━\n'
+    msg += '⚖️  ' + dados.peso_total_kg.toLocaleString('pt-BR') + ' kg  (' + arrobasTotal + '@)'
+    if (pesoMedioCalc) msg += '\n📊  Médio: ' + pesoMedioCalc.toLocaleString('pt-BR') + ' kg/cab  (' + arrobasMedia + '@)'
+    msg += '\n'
+  }
+  msg += '━━━━━━━━━━━━━━━━━━━\n'
+  msg += '*Categorias:*\n'
+  msg += linhaCats + '\n'
+  msg += '━━━━━━━━━━━━━━━━━━━\n'
+  msg += '_Responda *sim* · *não* · ou corrija_'
+
+  return msg
 }
 
 // ─── Salvar dados do fluxo guiado ────────────────────────────────────────────
@@ -1789,7 +1790,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781817912', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781820389', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
