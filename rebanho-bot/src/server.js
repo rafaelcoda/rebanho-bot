@@ -339,6 +339,7 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
             }
           }
           console.log('[pasto RAG] input:', resposta.trim(), '| inputUpper:', input, '| match:', match ? match.nome : 'null', '| total retiros:', retiros.length)
+          if (match) {
             const nd = Object.assign({}, dados, {
               subdivisao_nome: match.nome,
               subdivisao_id: match.id,
@@ -1887,7 +1888,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781822025', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781822147', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
