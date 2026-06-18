@@ -72,6 +72,38 @@ app.use(express.urlencoded({ extended: false }))
 app.use(express.json())
 app.use(express.static(path.join(__dirname)))
 
+// ─── Middleware de logging completo ──────────────────────────────────────────
+app.use(function(req, res, next) {
+  const inicio = Date.now()
+  const ts = new Date().toISOString()
+
+  // Log da requisição
+  const bodyLog = req.body && Object.keys(req.body).length
+    ? JSON.stringify(req.body).substring(0, 500)
+    : ''
+  console.log('[REQ]', ts, req.method, req.path,
+    req.query && Object.keys(req.query).length ? JSON.stringify(req.query) : '',
+    bodyLog ? '| body: ' + bodyLog : ''
+  )
+
+  // Interceptar o response para logar
+  const origJson = res.json.bind(res)
+  const origSend = res.send.bind(res)
+
+  function logResp(body) {
+    const ms = Date.now() - inicio
+    const bodyStr = typeof body === 'object' ? JSON.stringify(body).substring(0, 300) : String(body || '').substring(0, 300)
+    console.log('[RES]', new Date().toISOString(), req.method, req.path, res.statusCode, ms + 'ms',
+      bodyStr ? '| ' + bodyStr : ''
+    )
+  }
+
+  res.json = function(body) { logResp(body); return origJson(body) }
+  res.send = function(body) { logResp(body); return origSend(body) }
+
+  next()
+})
+
 let _twilioClient = null
 function getTwilioClient() {
   if (!_twilioClient) _twilioClient = twilio(
@@ -1738,7 +1770,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781797219', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781814497', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
