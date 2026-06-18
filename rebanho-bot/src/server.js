@@ -644,9 +644,10 @@ function gerarResumoGuiado(dados) {
     '📍 *Local:* ' + (dados.fazenda || '—') +
       (dados.subdivisao_nome ? ' › ' + dados.subdivisao_nome : '') +
       (dados.lote_nome ? ' › ' + dados.lote_nome : '') + '\n' +
+    (dados.tipo_animal ? '🐄 *Animal:* ' + dados.tipo_animal + '\n' : '') +
     '📅 *Data:* ' + periodo +
     pesoLine + '\n\n*Por categoria:*\n' + (linhas || '  —') + '\n\n' +
-    'Está correto? Responda *sim* para salvar ou *não* para cancelar.'
+    'Está correto? Responda *sim* para salvar, *não* para cancelar ou informe o peso do lote.'
 }
 
 // ─── Salvar dados do fluxo guiado ────────────────────────────────────────────
@@ -1777,7 +1778,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781816407', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781817286', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
