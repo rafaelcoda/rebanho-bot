@@ -19,13 +19,14 @@ async function buscarLogsFly(limite) {
   try {
     const { data, error } = await getSb()
       .from('bot_logs')
-      .select('id,tipo,mensagem,dados,criado_em')
+      .select('*')
       .order('criado_em', { ascending: false })
       .limit(limite || 100)
     if (error) throw new Error(error.message)
-    // Normalizar para o formato esperado
+    // Normalizar para o formato esperado — aceitar qualquer nome de coluna de texto
     return (data || []).map(function(r) {
-      return { message: r.mensagem || r.tipo || '', timestamp: r.criado_em, dados: r.dados }
+      const msg = r.mensagem || r.message || r.msg || r.log || r.texto || r.tipo || ''
+      return { message: msg, timestamp: r.criado_em || r.created_at || r.ts || '', dados: r.dados || r.data || {} }
     })
   } catch(e) {
     console.log('[agenteLogs] Erro ao buscar logs Supabase:', e.message)
