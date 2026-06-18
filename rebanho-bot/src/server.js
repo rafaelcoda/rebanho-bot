@@ -130,27 +130,40 @@ const supabase = new Proxy({}, {
 // ─── Menu cascata numerado ────────────────────────────────────────────────────
 async function enviarMenuNumerico(de, titulo, opcoes, rodape) {
   const emojis = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟']
-  const MAX = 1400
+  const MAX = 1500   // Twilio UTF-16 code units limit = 1600, margem de segurança
   const BLOCO = 20
 
-  // Lista pequena — enviar tudo de uma vez
+  function montarMsgSimples(titulo, opcoes, rodape, offset) {
+    // Para listas grandes usar números simples (1. 2. 3.) em vez de emojis
+    const usarEmoji = opcoes.length <= 10 && offset === 0
+    const linhas = opcoes.map((o, i) => {
+      const num = usarEmoji ? (emojis[i] || (offset + i + 1) + '.') : (offset + i + 1) + '.'
+      return num + '  ' + o
+    })
+    const parts = []
+    if (titulo) parts.push('*' + titulo + '*')
+    parts.push(linhas.join('\n'))
+    parts.push(rodape || '_Responda com o número._')
+    return parts.join('\n\n')
+  }
+
+  // Lista pequena — tentar em uma mensagem
   if (opcoes.length <= 10) {
-    const linhas = opcoes.map((o, i) => (emojis[i] || (i+1)+'.') + '  ' + o)
-    const msg = '*' + titulo + '*\n\n' + linhas.join('\n') + '\n\n' + (rodape || '_Responda com o número._')
+    const msg = montarMsgSimples(titulo, opcoes, rodape, 0)
     if (msg.length <= MAX) { await enviarMensagem(de, msg); return }
   }
 
-  // Lista grande — paginar em blocos de 20
+  // Lista grande — paginar em blocos de 20 com números simples
   const totalBlocos = Math.ceil(opcoes.length / BLOCO)
   for (let i = 0; i < opcoes.length; i += BLOCO) {
     const bloco = opcoes.slice(i, i + BLOCO)
     const pagAtual = Math.floor(i / BLOCO) + 1
-    const linhas = bloco.map((o, j) => (i + j + 1) + '.  ' + o)
-    const cabecalho = pagAtual === 1 && titulo ? '*' + titulo + '*\n\n' : ''
+    const tituloBloco = pagAtual === 1 ? titulo : null
     const rod = pagAtual < totalBlocos
-      ? '_Parte ' + pagAtual + '/' + totalBlocos + ' — continue digitando o nome ou aguarde_'
+      ? '_Parte ' + pagAtual + '/' + totalBlocos + ' — ou digite o código diretamente_'
       : (rodape || '_Responda com o número._')
-    await enviarMensagem(de, cabecalho + linhas.join('\n') + '\n\n' + rod)
+    const msg = montarMsgSimples(tituloBloco, bloco, rod, i)
+    await enviarMensagem(de, msg)
   }
 }
 function parsearOpcao(texto, total) {
@@ -1908,7 +1921,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781822438', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781822876', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
