@@ -14,23 +14,21 @@ function getSb() {
   return _sb
 }
 
-// ─── Buscar logs do Fly.io via API ───────────────────────────────────────────
+// ─── Buscar logs do Supabase (bot_logs) ──────────────────────────────────────
 async function buscarLogsFly(limite) {
   try {
-    const resp = await axios.get(
-      `https://api.machines.dev/v1/apps/${process.env.FLY_APP_NAME || 'rebanho-bot-ricci'}/logs`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.FLY_API_TOKEN}`,
-          Accept: 'application/json',
-        },
-        params: { limit: limite || 100 },
-        timeout: 15000,
-      }
-    )
-    return resp.data || []
+    const { data, error } = await getSb()
+      .from('bot_logs')
+      .select('id,tipo,mensagem,dados,criado_em')
+      .order('criado_em', { ascending: false })
+      .limit(limite || 100)
+    if (error) throw new Error(error.message)
+    // Normalizar para o formato esperado
+    return (data || []).map(function(r) {
+      return { message: r.mensagem || r.tipo || '', timestamp: r.criado_em, dados: r.dados }
+    })
   } catch(e) {
-    console.log('[agenteLogs] Erro ao buscar logs Fly.io:', e.message)
+    console.log('[agenteLogs] Erro ao buscar logs Supabase:', e.message)
     return []
   }
 }
@@ -213,7 +211,7 @@ async function aplicarAcoesAutomaticas(insights) {
 // ─── Ciclo principal do agente ────────────────────────────────────────────────
 async function executarCiclo(opcoes) {
   const limite = (opcoes && opcoes.limite) || 200
-  console.log('[agenteLogs] Iniciando ciclo — buscando últimos', limite, 'logs do Fly.io')
+  console.log('[agenteLogs] Iniciando ciclo — buscando últimos', limite, 'logs do Supabase')
 
   // 1. Buscar logs
   const logsRaw = await buscarLogsFly(limite)
