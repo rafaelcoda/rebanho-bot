@@ -283,8 +283,8 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
   const respostaLower = resposta.toLowerCase()
 
   if (etapa === 'menu_inicial') {
-    const _fm  = dados._fazendasMenu   // step 1: lista de fazendas
-    const _es  = dados._etapaMenu      // 'fazenda' | 'entrada_saida' | 'tipo'
+    const _fm  = dados._fazendasMenu
+    const _es  = dados._etapaMenu
 
     // ── Step 1: selecionar fazenda ──────────────────────────────────────────
     if (!dados.fazenda && _fm) {
@@ -294,13 +294,110 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         return
       }
       const faz = _fm[idx]
-      const nd = Object.assign({}, dados, { fazenda: faz.nome, fazenda_id: faz.id, _fazendasMenu: null, _etapaMenu: 'entrada_saida' })
+      const nd = Object.assign({}, dados, { fazenda: faz.nome, fazenda_id: faz.id, _fazendasMenu: null, _etapaMenu: 'pasto' })
       setSessao(de, nd, 'menu_inicial')
-      await enviarMenuNumerico(de, '📍 *' + faz.nome + '*\n\nEntrada ou saída?', ['Entrada  (nascimento / compra)', 'Saída  (morte / abate / venda)', 'Transferência / Troca de categoria'])
+      await enviarMensagem(de,
+        '📍 *' + faz.nome + '*\n\n' +
+        'Qual o *pasto*?\n\n' +
+        '_Informe o código ou nome. Ex: ITU10TP · Pasto 41 · Confinamento 3_'
+      )
       return
     }
 
-    // ── Step 2: entrada ou saída ────────────────────────────────────────────
+    // ── Step 2: pasto com RAG ───────────────────────────────────────────────
+    if (_es === 'pasto') {
+      await enviarMensagem(de, '_Buscando pasto..._')
+      try {
+        const fazId = dados.fazenda_id
+        // Buscar todos os retiros da fazenda para RAG
+        const { data: retiros } = await getSupabase()
+          .from('subdivisoes')
+          .select('id,nome,nome_normalizado,tipo,area_ha,codigo,codigo_normalizado')
+          .eq('fazenda_id', fazId)
+          .eq('ativo', true)
+        if (retiros && retiros.length) {
+          // RAG: tentar match pelo código exato primeiro
+          const input = resposta.trim().toUpperCase().replace(/\s+/g,'')
+          let match = retiros.find(function(r) { return r.codigo && r.codigo.toUpperCase() === input })
+          // Depois por código normalizado
+          if (!match) {
+            const inputNorm = resposta.trim().toLowerCase().replace(/\s+/g,'')
+            match = retiros.find(function(r) { return r.codigo_normalizado && r.codigo_normalizado.replace(/\s+/g,'') === inputNorm })
+          }
+          // Depois por nome normalizado (parcial)
+          if (!match) {
+            const inputNorm2 = resposta.trim().toLowerCase()
+            match = retiros.find(function(r) { return r.nome_normalizado && r.nome_normalizado.includes(inputNorm2) })
+            // Inverso: nome contém o input
+            if (!match) match = retiros.find(function(r) { return inputNorm2.includes(r.nome_normalizado) })
+          }
+          // RAG embedding — usar Supabase pgvector se não achou por texto
+          if (!match && retiros.length > 0) {
+            const { buscarSubdivisaoRAG } = require('./db_fazendas')
+            if (buscarSubdivisaoRAG) {
+              match = await buscarSubdivisaoRAG(resposta, fazId)
+            }
+          }
+          if (match) {
+            const nd = Object.assign({}, dados, {
+              subdivisao_nome: match.nome,
+              subdivisao_id: match.id,
+              subdivisao_codigo: match.codigo,
+              _etapaMenu: 'entrada_saida'
+            })
+            setSessao(de, nd, 'menu_inicial')
+            await enviarMenuNumerico(de,
+              '✅ *' + match.nome + '* (' + match.tipo + ')' +
+              (match.area_ha ? ' · ' + match.area_ha + ' ha' : '') +
+              '\n\nEntrada ou saída?',
+              ['Entrada  (nascimento / compra)', 'Saída  (morte / abate / venda)', 'Transferência / Troca de categoria']
+            )
+            return
+          }
+          // Não achou — mostrar lista para selecionar
+          const s = sessoes[de]; if (s) s.dados._subsMenu = retiros
+          await enviarMenuNumerico(de,
+            '❓ Não encontrei *"' + resposta.trim() + '"*. Selecione o pasto:',
+            retiros.map(function(r) { return r.nome + (r.area_ha ? ' (' + r.area_ha + ' ha)' : '') })
+          )
+          return
+        }
+      } catch(e) { console.log('[pasto RAG] erro:', e.message) }
+      // Sem retiros cadastrados — pular para entrada_saida
+      const nd2 = Object.assign({}, dados, { _etapaMenu: 'entrada_saida' })
+      setSessao(de, nd2, 'menu_inicial')
+      await enviarMenuNumerico(de, '📍 *' + dados.fazenda + '*\n\nEntrada ou saída?', ['Entrada  (nascimento / compra)', 'Saída  (morte / abate / venda)', 'Transferência / Troca de categoria'])
+      return
+    }
+
+    // ── Step 2b: seleção numerada do pasto (quando RAG não achou) ───────────
+    if (_es === 'pasto' && dados._subsMenu) {
+      const retiros = dados._subsMenu
+      const idx = parsearOpcao(resposta, retiros.length)
+      if (idx !== null) {
+        const match = retiros[idx]
+        const nd = Object.assign({}, dados, {
+          subdivisao_nome: match.nome,
+          subdivisao_id: match.id,
+          subdivisao_codigo: match.codigo,
+          _subsMenu: null,
+          _etapaMenu: 'entrada_saida'
+        })
+        setSessao(de, nd, 'menu_inicial')
+        await enviarMenuNumerico(de,
+          '✅ *' + match.nome + '*\n\nEntrada ou saída?',
+          ['Entrada  (nascimento / compra)', 'Saída  (morte / abate / venda)', 'Transferência / Troca de categoria']
+        )
+        return
+      }
+      // Novo texto — tentar RAG de novo
+      const nd3 = Object.assign({}, dados, { _subsMenu: null })
+      setSessao(de, nd3, 'menu_inicial')
+      // Re-processar como pasto
+      await enviarMensagem(de, '_Buscando..._')
+    }
+
+    // ── Step 3: entrada ou saída ────────────────────────────────────────────
     if (_es === 'entrada_saida') {
       const idx = parsearOpcao(resposta, 3)
       if (idx === null) {
@@ -319,7 +416,7 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       return
     }
 
-    // ── Step 3: tipo específico ─────────────────────────────────────────────
+    // ── Step 4: tipo específico ─────────────────────────────────────────────
     if (_es === 'tipo') {
       const grupo = dados._tipoGrupo
       const mapEntrada  = [{tipo:'nascimento', label:'Nascimentos'}, {tipo:'compra', label:'Compras'}]
@@ -1790,7 +1887,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781820389', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781821438', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
