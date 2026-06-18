@@ -639,6 +639,7 @@ function gerarResumoGuiado(dados) {
       (pesoMedioCalc ? ' | *Médio:* ' + pesoMedioCalc.toLocaleString('pt-BR') + ' kg/cab (' + arrobasMedia + '@)' : '')
     : ''
 
+  console.log('[resumo] fazenda:', dados.fazenda, '| sub:', dados.subdivisao_nome, '| lote:', dados.lote_nome, '| tipo_animal:', dados.tipo_animal)
   return '📋 *Confira antes de salvar:*\n\n' +
     '📌 *Tipo:* ' + dados.label_tipo + '\n' +
     '📍 *Local:* ' + (dados.fazenda || '—') +
@@ -1778,7 +1779,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781817286', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781817371', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
