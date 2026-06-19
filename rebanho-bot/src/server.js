@@ -359,17 +359,15 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
         if (retiros && retiros.length) {
           // RAG: tentar match pelo código exato primeiro
           const input = resposta.trim().toUpperCase().replace(/\s+/g,'')
-          let match = retiros.find(function(r) { return r.codigo && r.codigo.toUpperCase() === input })
-          // Depois por código normalizado
-          if (!match) {
-            const inputNorm = resposta.trim().toLowerCase().replace(/\s+/g,'')
-            match = retiros.find(function(r) { return r.codigo_normalizado && r.codigo_normalizado.replace(/\s+/g,'') === inputNorm })
-          }
-          // Depois por nome normalizado (parcial)
+          const inputNormBase = resposta.trim().toLowerCase().replace(/[^a-z0-9]/g,'')
+          // Match por código exato (case-insensitive, sem espaços)
+          let match = retiros.find(function(r) { return r.codigo && r.codigo.toUpperCase().replace(/\s+/g,'') === input })
+          // Match por código normalizado
+          if (!match) match = retiros.find(function(r) { return r.codigo_normalizado && r.codigo_normalizado.replace(/[^a-z0-9]/g,'') === inputNormBase })
+          // Match por nome normalizado (contém)
           if (!match) {
             const inputNorm2 = resposta.trim().toLowerCase()
             match = retiros.find(function(r) { return r.nome_normalizado && r.nome_normalizado.includes(inputNorm2) })
-            // Inverso: nome contém o input
             if (!match) match = retiros.find(function(r) { return inputNorm2.includes(r.nome_normalizado) })
           }
           // RAG embedding — usar Supabase pgvector se não achou por texto
@@ -1940,7 +1938,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781830327', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781830692', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
