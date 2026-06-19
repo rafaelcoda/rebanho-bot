@@ -545,6 +545,16 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
 
   // ── Etapa: lote e tipo de animal ──────────────────────────
   if (etapa === 'lote_tipo') {
+    // Se pasto já foi escolhido no menu (subdivisao_id definido), pular menu de retiro
+    if (dados.subdivisao_id && dados.subdivisao_nome && !dados._subsMenu) {
+      var _lm0 = dados._lotesMenu
+      if (!_lm0) {
+        try {
+          var fSkip = await dbFazendas.resolverFazenda(dados.fazenda)
+          if (fSkip) { await perguntarLoteAposSub(de, dados, fSkip.id); return }
+        } catch(eSkip) {}
+      }
+    }
     // ── Cascata numerada ──
     var _sm = dados._subsMenu, _lm = dados._lotesMenu
     var _is = _sm ? parsearOpcao(resposta, _sm.length) : null
@@ -767,9 +777,11 @@ function gerarResumoGuiado(dados) {
       .map(function(c) { return '  [' + c.item + '] ' + c.discriminacao + ': ' + c.existencia_atual }).join('\n')
   } else {
     linhaCats = movs.map(function(m) {
-      const cod = (m.categoria || m.categoria_item || '').match(/\d+\.\d+/)
-      const nomecat = cod ? (catMap[cod[0]] || m.categoria || m.categoria_item || '—') : (m.categoria || m.categoria_item || '—')
-      return '  [' + (cod ? cod[0] : '?') + '] ' + nomecat + ': ' + (m.quantidade || 0) + ' cab'
+      const catStr = m.categoria || m.categoria_item || ''
+      const cod = catStr.match(/\d+\.\d+/)
+      const nomecat = cod ? (catMap[cod[0]] || catStr.replace(cod[0],'').trim() || '—') : catStr || '—'
+      const codLabel = cod ? cod[0] : '?'
+      return '  [' + codLabel + '] ' + nomecat + ': ' + (m.quantidade || 0) + ' cab'
     }).join('\n') || '  —'
   }
 
@@ -1938,7 +1950,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781830692', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781831216', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
