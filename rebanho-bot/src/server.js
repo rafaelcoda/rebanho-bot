@@ -329,10 +329,18 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       const faz = _fm[idx]
       const nd = Object.assign({}, dados, { fazenda: faz.nome, fazenda_id: faz.id, _fazendasMenu: null, _etapaMenu: 'pasto' })
       setSessao(de, nd, 'menu_inicial')
+      const prefixoMap = {
+        'Iturama':          { pre: 'ITU', ex: 'ITU10TP · ITU01CO · ITU05TA' },
+        'Fazenda Aliança':  { pre: 'ALI', ex: 'ALI41TP · ALI12TP · ALI01RL' },
+        'Arrendamento FRG': { pre: 'FRG', ex: 'FRG01TP · FRG02TP · FRG03TP' },
+        'Arrendamento RIV': { pre: 'RIV', ex: 'RIV03TP · RIV07TP · RIV01TA' },
+        'Arrendamento PDA': { pre: 'PDA', ex: 'PDA01TP · PDA02TP' },
+      }
+      const dica = prefixoMap[faz.nome]
       await enviarMensagem(de,
         '📍 *' + faz.nome + '*\n\n' +
         'Qual o *pasto*?\n\n' +
-        '_Informe o código ou nome. Ex: ITU10TP · Pasto 41 · Confinamento 3_'
+        (dica ? '🔑 Prefixo desta fazenda: *' + dica.pre + '*\n_Ex: ' + dica.ex + '_' : '_Informe o código ou nome._')
       )
       return
     }
@@ -1932,7 +1940,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781829992', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781830327', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
