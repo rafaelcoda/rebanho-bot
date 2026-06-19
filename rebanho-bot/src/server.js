@@ -214,6 +214,15 @@ async function enviarMenuInicial(de, usuario) {
 
 // ─── Perguntar Retiro, Lote e Tipo — menu cascata numerado ───────────────────
 async function perguntarLoteTipo(de, dados) {
+  // Se pasto já foi escolhido no menu cascata, pular direto para lote
+  if (dados.subdivisao_id && dados.subdivisao_nome) {
+    try {
+      const fazObj2 = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
+      if (fazObj2) { await perguntarLoteAposSub(de, dados, fazObj2.id); return }
+    } catch(e) {}
+    await enviarMensagem(de, 'Qual o *lote* e *tipo de animal*?\n\n_Ex: "Lote 3, Nelore"_')
+    return
+  }
   try {
     const fazObj = await dbFazendas.resolverFazenda(dados.fazenda || 'Grupo Ricci')
     if (fazObj) {
@@ -673,7 +682,22 @@ async function processarFluxoGuiado(de, texto, dados, etapa) {
       )
       return
     }
-    const pesoExtraido = await extrairPeso(resposta)
+    // Normalizar: "3.567" → "3567 kg", "3.567,5" → "3567.5 kg"
+    let respostaPeso = resposta
+    const numMatch = resposta.match(/^([\d.,]+)\s*(kg|@|arroba)?/i)
+    if (numMatch) {
+      let numStr = numMatch[1]
+      // Ponto como milhar (ex: 3.567) — se último separador é ponto e tem 3 dígitos após
+      if (numStr.match(/^\d{1,3}\.\d{3}$/) || numStr.match(/^\d{1,3}\.\d{3},\d+$/)) {
+        numStr = numStr.replace(/\./g,'').replace(',','.')
+      } else {
+        // Vírgula como decimal (ex: 3.567,5)
+        numStr = numStr.replace(/\./g,'').replace(',','.')
+      }
+      const unidade = numMatch[2] ? ' ' + numMatch[2] : ' kg'
+      respostaPeso = numStr + unidade
+    }
+    const pesoExtraido = await extrairPeso(respostaPeso)
     if (!pesoExtraido.peso_total_kg && !pesoExtraido.peso_medio_kg) {
       await enviarMensagem(de,
         '⚠️ Não identifiquei o peso.\n\n' +
@@ -779,8 +803,22 @@ function gerarResumoGuiado(dados) {
     linhaCats = movs.map(function(m) {
       const catStr = m.categoria || m.categoria_item || ''
       const cod = catStr.match(/\d+\.\d+/)
-      const nomecat = cod ? (catMap[cod[0]] || catStr.replace(cod[0],'').trim() || '—') : catStr || '—'
-      const codLabel = cod ? cod[0] : '?'
+      // Se não achou código na string, tentar reverse lookup pelo nome
+      let codLabel = cod ? cod[0] : null
+      let nomecat = ''
+      if (codLabel) {
+        nomecat = catMap[codLabel] || catStr.replace(codLabel,'').trim() || catStr
+      } else {
+        // Buscar pelo nome no TODAS_CATS
+        const found = TODAS_CATS.find(function(c) { return c.toLowerCase().includes(catStr.toLowerCase()) || catStr.toLowerCase().includes(c.split(' ').slice(1).join(' ').toLowerCase()) })
+        if (found) {
+          codLabel = found.split(' ')[0]
+          nomecat = found.substring(found.indexOf(' ')+1)
+        } else {
+          codLabel = '?'
+          nomecat = catStr || '—'
+        }
+      }
       return '  [' + codLabel + '] ' + nomecat + ': ' + (m.quantidade || 0) + ' cab'
     }).join('\n') || '  —'
   }
@@ -1950,7 +1988,7 @@ function formatarLotes(lotes) {
 // ─── APIs ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard.html')))
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date() }))
-app.get('/version', (req, res) => res.json({ version: '1781831216', ts: new Date().toISOString(), node: process.version }))
+app.get('/version', (req, res) => res.json({ version: '1781831660', ts: new Date().toISOString(), node: process.version }))
 
 app.get('/api/resumo', async (req, res) => {
   try {
